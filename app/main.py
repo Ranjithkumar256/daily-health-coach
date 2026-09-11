@@ -341,6 +341,12 @@ def get_service_worker():
 # Mount static assets directory
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+# Mount subdirectories for relative path support from /
+for sub in ["css", "js", "assets"]:
+    sub_dir = os.path.join(STATIC_DIR, sub)
+    if os.path.exists(sub_dir):
+        app.mount(f"/{sub}", StaticFiles(directory=sub_dir), name=f"static_{sub}")
+
 
 @app.get("/")
 def serve_index():

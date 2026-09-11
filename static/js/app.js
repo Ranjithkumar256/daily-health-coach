@@ -918,10 +918,10 @@ class HealthCoachApp {
   }
 
   initPWA() {
-    // Service Worker Registration
-    if ('serviceWorker' in navigator) {
+    // Service Worker Registration (skip in native Capacitor app)
+    if ('serviceWorker' in navigator && !window.Capacitor) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(reg => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
           console.log('Daily Health Coach SW registered:', reg.scope);
         }).catch(err => {
           console.warn('SW registration error:', err);
