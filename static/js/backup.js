@@ -111,39 +111,78 @@
     },
 
     // -------------------------------------------------------------
-    // AUTOMATIC BACKGROUND AUTO-SAVE ENGINE
-    // Automatically writes database_backup.json to Android/data/ without clicking
+    // ON-DEVICE DATABASE PERSISTENCE & STARTUP SYNC
+    // Directly reads database_backup.json on install/reinstall or if modified externally
     // -------------------------------------------------------------
-    _autoSaveTimer: null,
-    triggerAutoSave(reason = 'data_modified') {
-      if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
-      this._autoSaveTimer = setTimeout(() => {
-        this.silentAutoSave(reason);
-      }, 1500); // 1.5 second debounce for optimal battery & performance
+    calculateStringHash(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+      }
+      return String(hash);
     },
 
-    async silentAutoSave(reason = 'auto') {
+    async syncFromDatabaseFileOnStartup() {
       const Filesystem = window.Capacitor?.Plugins?.Filesystem;
-      if (!Filesystem) return; // Native Android persistent auto-save
+      if (!Filesystem) return;
 
       try {
-        const payload = await this.gatherDatabasePayload();
-        const jsonStr = JSON.stringify(payload, null, 2);
-        await Filesystem.writeFile({
-          path: this.BACKUP_FILENAME,
-          data: jsonStr,
-          directory: 'EXTERNAL', // /storage/emulated/0/Android/data/com.dailyhealthcoach.app/files/
-          encoding: 'utf8',
-          recursive: true
-        });
+        let rawData = null;
+        let sourceDir = `Internal Storage/${this.APP_STORAGE_DIR}${this.BACKUP_FILENAME}`;
 
-        const pathEl = document.getElementById('lastSavedFilePath');
-        if (pathEl) {
-          pathEl.innerHTML = `⚡ <strong>Auto-Synced:</strong> <code>Internal Storage/${this.APP_STORAGE_DIR}${this.BACKUP_FILENAME}</code> <span style="opacity: 0.8;">(${new Date().toLocaleTimeString()})</span>`;
-          pathEl.style.display = 'block';
+        // 1. First check dedicated Android/data path
+        try {
+          const res = await Filesystem.readFile({
+            path: this.BACKUP_FILENAME,
+            directory: 'EXTERNAL',
+            encoding: 'utf8'
+          });
+          if (res && res.data) {
+            rawData = res.data;
+          }
+        } catch (e1) {
+          // 2. If Android/data is empty (e.g. fresh reinstall), check persistent Documents directory
+          try {
+            const res2 = await Filesystem.readFile({
+              path: this.BACKUP_FILENAME,
+              directory: 'DOCUMENTS',
+              encoding: 'utf8'
+            });
+            if (res2 && res2.data) {
+              rawData = res2.data;
+              sourceDir = `Documents/${this.BACKUP_FILENAME}`;
+            }
+          } catch (e2) {}
+        }
+
+        if (!rawData) return;
+
+        const currentFileHash = this.calculateStringHash(rawData);
+        const lastLoadedHash = localStorage.getItem('dhc_loaded_db_file_hash');
+        const hasExistingData = localStorage.getItem('dhc_targets_v1') || localStorage.getItem('dhc_habits_v1');
+
+        // Automatically load on:
+        // A) Reinstall / fresh install (!hasExistingData)
+        // B) Database modified externally in a file manager (currentFileHash !== lastLoadedHash)
+        if (!hasExistingData || (lastLoadedHash && currentFileHash !== lastLoadedHash)) {
+          console.log(`[DailyHealthCoach] Auto-syncing database from ${sourceDir}...`);
+          const payload = JSON.parse(rawData);
+          await this.applyImportedPayload(payload, sourceDir, false);
+          localStorage.setItem('dhc_loaded_db_file_hash', currentFileHash);
+
+          const pathEl = document.getElementById('lastSavedFilePath');
+          if (pathEl) {
+            pathEl.innerHTML = `📁 <strong>Loaded Database:</strong> <code>${sourceDir}</code> <span style="opacity: 0.8;">(${new Date().toLocaleTimeString()})</span>`;
+            pathEl.style.display = 'block';
+          }
+          if (window.toastManager) {
+            window.toastManager.show(`✅ Health database synced from ${sourceDir}`, 'success');
+          }
         }
       } catch (err) {
-        console.debug('Background auto-save caught:', err);
+        console.warn('Startup database file sync error:', err);
       }
     },
 
@@ -154,18 +193,32 @@
         const fileName = this.BACKUP_FILENAME;
         let savedPathDescription = '';
 
-        // 1. Native Android Storage (Capacitor Filesystem in Android/data/com.dailyhealthcoach.app/files/)
+        // 1. Native Android Storage: Writes to dedicated Android/data and mirrors to Documents for uninstall survival
         const Filesystem = window.Capacitor?.Plugins?.Filesystem;
         if (Filesystem) {
           try {
             await Filesystem.writeFile({
               path: fileName,
               data: jsonStr,
-              directory: 'EXTERNAL', // Resolves directly to /storage/emulated/0/Android/data/com.dailyhealthcoach.app/files/
+              directory: 'EXTERNAL',
               encoding: 'utf8',
               recursive: true
             });
             savedPathDescription = `Internal Storage/${this.APP_STORAGE_DIR}${fileName}`;
+
+            // Also mirror to Documents directory (documents files are never deleted on uninstall)
+            try {
+              await Filesystem.writeFile({
+                path: fileName,
+                data: jsonStr,
+                directory: 'DOCUMENTS',
+                encoding: 'utf8',
+                recursive: true
+              });
+            } catch (docErr) {}
+
+            const hash = this.calculateStringHash(jsonStr);
+            localStorage.setItem('dhc_loaded_db_file_hash', hash);
           } catch (capErr) {
             console.warn('Native Filesystem write error, falling back to web path:', capErr);
           }
@@ -208,7 +261,7 @@
         // Update UI status badge
         const pathEl = document.getElementById('lastSavedFilePath');
         if (pathEl) {
-          pathEl.textContent = `✅ Saved: ${savedPathDescription} (${new Date().toLocaleTimeString()})`;
+          pathEl.textContent = `✅ Saved Database: ${savedPathDescription} (${new Date().toLocaleTimeString()})`;
           pathEl.style.display = 'block';
         }
 
@@ -224,7 +277,7 @@
     },
 
     async restoreFromDesignatedPath() {
-      // 1. Direct restore from Android/data/com.dailyhealthcoach.app/files/database_backup.json
+      // 1. Direct restore from Android/data/com.dailyhealthcoach.app/files/database_backup.json or Documents
       const Filesystem = window.Capacitor?.Plugins?.Filesystem;
       if (Filesystem) {
         try {
@@ -235,10 +288,20 @@
           });
           if (res && res.data) {
             const payload = JSON.parse(res.data);
-            return await this.applyImportedPayload(payload, `Internal Storage/${this.APP_STORAGE_DIR}${this.BACKUP_FILENAME}`);
+            return await this.applyImportedPayload(payload, `Internal Storage/${this.APP_STORAGE_DIR}${this.BACKUP_FILENAME}`, true);
           }
         } catch (capErr) {
-          console.log('Direct read from Android/data not found, opening file chooser:', capErr);
+          try {
+            const res2 = await Filesystem.readFile({
+              path: this.BACKUP_FILENAME,
+              directory: 'DOCUMENTS',
+              encoding: 'utf8'
+            });
+            if (res2 && res2.data) {
+              const payload = JSON.parse(res2.data);
+              return await this.applyImportedPayload(payload, `Documents/${this.BACKUP_FILENAME}`, true);
+            }
+          } catch (e2) {}
         }
       }
 
@@ -246,7 +309,7 @@
       document.getElementById('inputImportFileManager')?.click();
     },
 
-    async applyImportedPayload(payload, sourcePathName = 'File') {
+    async applyImportedPayload(payload, sourcePathName = 'File', shouldReload = true) {
       if (!payload.app || !payload.data) {
         throw new Error('Invalid Daily Health Coach backup file structure');
       }
@@ -262,11 +325,12 @@
         }
       });
 
-      if (window.toastManager) {
-        window.toastManager.show(`✅ Restored health database from ${sourcePathName}! (${recordCount} records loaded)`, 'success');
+      if (shouldReload) {
+        if (window.toastManager) {
+          window.toastManager.show(`✅ Restored health database from ${sourcePathName}! (${recordCount} records loaded)`, 'success');
+        }
+        setTimeout(() => window.location.reload(), 1000);
       }
-
-      setTimeout(() => window.location.reload(), 1000);
     },
 
     async importFromFileManager(file) {
@@ -446,47 +510,17 @@
 
   window.BackupManager = BackupManager;
 
-  // -------------------------------------------------------------
-  // AUTOMATIC STORAGE MUTATION INTERCEPTOR & LIFECYCLE SYNC
-  // -------------------------------------------------------------
-  try {
-    const origSetItem = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(key, val) {
-      origSetItem(key, val);
-      if (typeof key === 'string' && (key.startsWith('dhc_') || key === 'sound_enabled')) {
-        if (window.BackupManager?.triggerAutoSave) {
-          window.BackupManager.triggerAutoSave(key);
-        }
-      }
-    };
-  } catch (e) {}
-
-  // App lifecycle listeners: Auto-save immediately when minimizing or leaving app
+  // Re-check database file if user modifies it externally in a file manager
   window.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && window.BackupManager) {
-      window.BackupManager.silentAutoSave('app_minimized');
+    if (document.visibilityState === 'visible' && window.BackupManager) {
+      window.BackupManager.syncFromDatabaseFileOnStartup();
     }
   });
-
-  window.addEventListener('pagehide', () => {
-    if (window.BackupManager) {
-      window.BackupManager.silentAutoSave('page_hide');
-    }
-  });
-
-  if (window.Capacitor?.Plugins?.App) {
-    try {
-      window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
-        if (!state.isActive && window.BackupManager) {
-          window.BackupManager.silentAutoSave('app_background');
-        }
-      });
-    } catch (e) {}
-  }
 
   document.addEventListener('DOMContentLoaded', () => {
     BackupManager.checkFirstLaunchTerms();
     BackupManager.updateCloudStatusUI();
+    BackupManager.syncFromDatabaseFileOnStartup();
 
     const agreeCheckbox = document.getElementById('termsAgreeCheckbox');
     const acceptBtn = document.getElementById('btnAcceptTerms');
