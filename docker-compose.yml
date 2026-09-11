@@ -1,0 +1,26 @@
+services:
+  daily-health-coach:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME:-ranjith256}/daily-health-coach:latest
+    container_name: daily-health-coach-app
+    ports:
+      - "${PORT:-8001}:8001"
+    volumes:
+      - healthcoach_data:/app/data
+    environment:
+      - PORT=8001
+      - HOST=0.0.0.0
+      - DB_PATH=/app/data/health_coach.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  healthcoach_data:
+    name: healthcoach_data

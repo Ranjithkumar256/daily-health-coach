@@ -1,0 +1,16 @@
+{
+  "appId": "com.dailyhealth.coach",
+  "appName": "Daily Health Coach",
+  "webDir": "static",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#080b11"
+    }
+  }
+}

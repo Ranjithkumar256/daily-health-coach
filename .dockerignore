@@ -1,0 +1,25 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+tests/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Mobile & Node modules
+node_modules/
+package-lock.json
+
+# Local databases and logs
+health_coach.db
+*.log
+
+# Git & IDE configs
+.git/
+.gitignore
+.DS_Store

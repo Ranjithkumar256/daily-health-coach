@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Daily Health Coach | Smart Habits, Hydration, Protein & Progress</title>
+  <meta name="description" content="All-in-one daily lifestyle and health habit coach for everyday people. Track hydration, protein, calories, movement, and wellness consistency.">
+  <meta name="theme-color" content="#10b981">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/static/assets/icons/icon-192.png">
+  <link rel="icon" type="image/png" href="/static/assets/icons/icon-192.png">
+
+  <!-- CSS Design System & Components -->
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+</head>
+<body>
+
+  <!-- SVG Gradients Definition -->
+  <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="60%" stop-color="#00b4d8" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </svg>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Daily Health Coach</h1>
+          <p class="brand-subtitle">Smart Habits, Nutrition & Lifestyle Engine</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="streak-pill">
+          <span class="streak-flame">🔥</span>
+          <span id="streakDaysDisplay">6 Day Streak</span>
+        </div>
+
+        <button id="pwaInstallBtn" class="btn-icon-pill" style="display: none; background: rgba(16, 185, 129, 0.15); border-color: var(--emerald-500); color: var(--emerald-400);">
+          <span>📲 Install Android App</span>
+        </button>
+
+        <button id="viewModeBtn" class="btn-icon-pill view-mode-btn" onclick="app.togglePhonePreview()">
+          <span>📱 Android App View</span>
+        </button>
+
+        <button id="soundToggleBtn" class="btn-icon-pill">
+          <span>🔊 Sound On</span>
+        </button>
+
+        <button class="btn-icon-pill" onclick="app.resetToDemo()" title="Reset to rich demo day data">
+          <span>⚡ Demo Day</span>
+        </button>
+
+        <button class="btn-icon-pill" onclick="app.openModal('modalSettings')" title="Configure Health Targets">
+          <span>⚙️ Targets</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Date Navigator Bar -->
+    <div class="date-bar">
+      <div class="date-nav-controls">
+        <button class="btn-icon-pill date-nav-btn" onclick="app.shiftDate(-1)" title="Previous Day">
+          <span>◀ Prev</span>
+        </button>
+        <div class="date-picker-wrap">
+          <input type="date" id="datePickerInput" class="date-picker-input" onchange="app.onDateInputChange(this.value)" title="Choose date to track">
+        </div>
+        <button class="btn-icon-pill date-nav-btn" onclick="app.shiftDate(1)" title="Next Day">
+          <span>Next ▶</span>
+        </button>
+        <button id="todayJumpBtn" class="btn-icon-pill date-nav-btn" onclick="app.jumpToToday()" style="display: none; background: rgba(56, 189, 248, 0.15); border-color: var(--azure-500); color: var(--azure-400);">
+          <span>📍 Today</span>
+        </button>
+      </div>
+
+      <div class="date-info-group">
+        <div class="date-display">
+          <span class="date-heading" id="currentDateHeading">Today</span>
+          <span class="date-sub" id="currentDateSub">Loading date...</span>
+        </div>
+
+        <div class="date-badges-wrap">
+          <span id="dateStatusBadge" class="badge badge-emerald">Live Active Day</span>
+          <span class="badge badge-azure">PWA Ready</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         DESKTOP WEB DASHBOARD VIEW
+         ==================================================================== -->
+    <div id="dashboardMainGrid" class="dashboard-grid">
+      
+      <!-- Left Sidebar: Score + Coach + 7-Day Chart -->
+      <aside class="dashboard-sidebar">
+        
+        <!-- Health Score Hero -->
+        <div class="coach-card score-hero">
+          <span class="card-subtitle" style="text-transform: uppercase; letter-spacing: 0.08em;">Daily Health Score</span>
+          
+          <div class="score-ring-container">
+            <svg class="score-ring-svg" viewBox="0 0 190 190">
+              <circle class="score-ring-bg" cx="95" cy="95" r="80"></circle>
+              <circle id="scoreRingProgress" class="score-ring-progress" cx="95" cy="95" r="80"></circle>
+            </svg>
+            <div class="score-center-info">
+              <span id="healthScoreVal" class="score-number">--</span>
+              <span class="score-total-denom">/ 100 PTS</span>
+            </div>
+          </div>
+
+          <div id="healthScoreGrade" class="score-grade-badge">Loading...</div>
+
+          <div class="score-pillars-breakdown">
+            <div class="pillar-mini-stat">
+              <span class="pillar-mini-label">💧 Hydration</span>
+              <span id="breakdownHydra" class="pillar-mini-val">--</span>
+            </div>
+            <div class="pillar-mini-stat">
+              <span class="pillar-mini-label">👟 Movement</span>
+              <span id="breakdownMove" class="pillar-mini-val">--</span>
+            </div>
+            <div class="pillar-mini-stat">
+              <span class="pillar-mini-label">🥗 Fuel / Macros</span>
+              <span id="breakdownFuel" class="pillar-mini-val">--</span>
+            </div>
+            <div class="pillar-mini-stat">
+              <span class="pillar-mini-label">🎯 Habits</span>
+              <span id="breakdownHabits" class="pillar-mini-val">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Smart Coach Insights -->
+        <div class="coach-card coach-panel">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon emerald">🧠</div>
+              <div>
+                <h3 class="card-title">Daily Health Coach</h3>
+                <span class="card-subtitle">Real-time proactive suggestions</span>
+              </div>
+            </div>
+            <div class="coach-header-badge">
+              <span class="coach-online-dot"></span>
+              <span>Active</span>
+            </div>
+          </div>
+
+          <div id="coachTipsContainer" class="coach-tips-list">
+            <!-- Dynamic Python Coach Tips inject here -->
+          </div>
+        </div>
+
+        <!-- 7-Day Trend Chart -->
+        <div class="coach-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon azure">📈</div>
+              <div>
+                <h3 class="card-title">7-Day Consistency</h3>
+                <span class="card-subtitle">Weekly lifestyle trend</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metric Selector Chips -->
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="badge badge-emerald metric-chip active" data-metric="health_score">Score</button>
+            <button class="badge badge-azure metric-chip" data-metric="steps">Steps</button>
+            <button class="badge badge-azure metric-chip" data-metric="water_ml">Hydration</button>
+            <button class="badge badge-amber metric-chip" data-metric="calories">Calories</button>
+          </div>
+
+          <div id="trendChartContainer" style="width: 100%; min-height: 180px; margin-top: 0.5rem;">
+            <!-- SVG chart renders here -->
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Right Main Content: 4 Core Pillar Cards -->
+      <main class="dashboard-main">
+
+        <!-- Transformation Roadmap Hero Card -->
+        <div class="coach-card roadmap-card" id="section-roadmap" style="margin-bottom: 1.5rem;">
+          <div class="card-header" style="padding-bottom: 0.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle);">
+            <div class="card-title-group">
+              <div class="card-icon emerald" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(56, 189, 248, 0.2));">🎯</div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <h3 class="card-title" style="font-size: 1.15rem;">Transformation Roadmap</h3>
+                  <span id="roadmapGoalBadge" class="badge badge-emerald" style="font-size: 0.72rem;">Fat Loss & Muscle Preservation</span>
+                </div>
+                <span class="card-subtitle">Personalized Metabolic Engine (Mifflin-St Jeor Formula)</span>
+              </div>
+            </div>
+            <button class="btn-icon-pill" onclick="app.openModal('modalSettings')" title="Update Age, Gender, Height, Weight & Goal">⚙️ Edit Profile & Goals</button>
+          </div>
+
+          <!-- 3 Pillars Grid -->
+          <div class="roadmap-three-grid">
+            
+            <!-- Pillar 1: What Will Do (The Strategic Plan) -->
+            <div class="roadmap-col">
+              <div class="roadmap-col-header">
+                <span class="roadmap-col-tag plan">1. WHAT WILL DO</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">The Strategy</span>
+              </div>
+              <div class="roadmap-stat-box">
+                <div class="roadmap-stat-main">
+                  <span id="roadmapDailyCals" class="roadmap-big-num">2,100</span>
+                  <span class="roadmap-unit">kcal / day</span>
+                </div>
+                <div id="roadmapDeficitBadge" class="badge badge-amber" style="margin-top: 4px; width: fit-content;">-500 kcal Deficit</div>
+              </div>
+              <div style="display: flex; gap: 8px; margin: 8px 0;">
+                <div class="roadmap-mini-pill">
+                  <span class="label">Target Protein</span>
+                  <strong id="roadmapTargetProtein">130g</strong>
+                </div>
+                <div class="roadmap-mini-pill">
+                  <span class="label">Est. Completion</span>
+                  <strong id="roadmapTargetDate">Dec 14, 2026</strong>
+                </div>
+              </div>
+              <p id="roadmapPlanSummary" class="roadmap-desc-text">
+                Targeting 500 kcal deficit under your TDEE with high protein to burn fat while keeping lean muscle tissue.
+              </p>
+            </div>
+
+            <!-- Pillar 2: How Much Is Done (Cumulative Progress) -->
+            <div class="roadmap-col">
+              <div class="roadmap-col-header">
+                <span class="roadmap-col-tag progress">2. HOW MUCH DONE</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Shift & Adherence</span>
+              </div>
+              <div class="roadmap-stat-box">
+                <div class="roadmap-stat-main">
+                  <span id="roadmapWeightShifted" class="roadmap-big-num">1.5</span>
+                  <span class="roadmap-unit">kg shifted</span>
+                </div>
+                <div id="roadmapGoalPctBadge" class="badge badge-emerald" style="margin-top: 4px; width: fit-content;">25% Achieved</div>
+              </div>
+              <div class="macro-progress-track" style="margin: 8px 0; height: 8px;">
+                <div id="roadmapProgressBar" class="macro-progress-fill fill-protein" style="width: 25%;"></div>
+              </div>
+              <div class="roadmap-weight-milestones">
+                <span>Start: <strong id="roadmapStartWeight">80.0kg</strong></span>
+                <span>Now: <strong id="roadmapCurrentWeight">78.5kg</strong></span>
+                <span>Goal: <strong id="roadmapTargetWeight">72.0kg</strong></span>
+              </div>
+              <p id="roadmapDoneSummary" class="roadmap-desc-text" style="margin-top: 6px;">
+                Shifted 1.5 kg of 8.0 kg goal across 7 active tracked days.
+              </p>
+            </div>
+
+            <!-- Pillar 3: What Can Do (Actionable Checklist) -->
+            <div class="roadmap-col">
+              <div class="roadmap-col-header">
+                <span class="roadmap-col-tag actions">3. WHAT CAN DO</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Today's Action Items</span>
+              </div>
+              <div id="roadmapActionsList" class="roadmap-actions-list">
+                <!-- Action items populated dynamically -->
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="pillars-grid">
+
+          <!-- 1. Hydration Engine -->
+          <div id="section-hydration" class="coach-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon azure">💧</div>
+                <div>
+                  <h3 class="card-title">Fluid Intelligence</h3>
+                  <span id="waterStatText" class="card-subtitle">-- / 2,500 ml</span>
+                </div>
+              </div>
+              <button class="btn-icon-pill" onclick="app.openModal('modalCustomWater')">+ Custom</button>
+            </div>
+
+            <div class="hydration-layout">
+              <div class="bottle-visual">
+                <div class="bottle-cap"></div>
+                <div id="bottleFillLevel" class="bottle-fill">
+                  <div class="bottle-wave"></div>
+                </div>
+                <div id="bottleReadout" class="bottle-readout">0%</div>
+              </div>
+
+              <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Quick Add</span>
+                <div class="quick-add-grid">
+                  <button class="btn-chip" onclick="app.quickAddWater(250)">+250ml Cup</button>
+                  <button class="btn-chip" onclick="app.quickAddWater(500)">+500ml Bottle</button>
+                  <button class="btn-chip" onclick="app.quickAddWater(750)">+750ml Flask</button>
+                  <button class="btn-chip" onclick="app.quickAddWater(350)">+350ml Mug</button>
+                </div>
+
+                <div style="margin-top: 1.25rem;">
+                  <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Recent Hydration Logs</span>
+                  <div id="waterLogsContainer" style="margin-top: 0.4rem; display: flex; flex-direction: column; gap: 4px;">
+                    <!-- Water log items -->
+                  </div>
+                </div>
+
+                <!-- Water Reminder Alert Box -->
+                <div class="water-reminder-box">
+                  <div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #ffffff;">💧 Smart Water Reminder</div>
+                    <div id="waterReminderStatusText" style="font-size: 0.72rem; color: var(--text-muted);">Interval: Every 60m</div>
+                  </div>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <span id="waterReminderCountdown" class="reminder-countdown-badge">⏳ In 58m</span>
+                    <button class="btn-chip" style="padding: 4px 8px; font-size: 0.72rem;" onclick="app.testWaterReminder()">🔔 Test</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Nutrition & Protein Fuel -->
+          <div id="section-nutrition" class="coach-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon amber">🥗</div>
+                <div>
+                  <h3 class="card-title">Nutrition & Macro Fuel</h3>
+                  <span class="card-subtitle">Protein-first approach</span>
+                </div>
+              </div>
+              <button class="btn-icon-pill" onclick="app.openModal('modalCustomMeal')">+ Meal</button>
+            </div>
+
+            <!-- Calorie Remaining Stat -->
+            <div class="calorie-budget-card">
+              <div class="calorie-metric-row">
+                <div class="calorie-stat-group">
+                  <span id="calRemainingDisplay" class="cal-remaining-big">--</span>
+                  <span class="cal-label">Kcal Remaining Today</span>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 0.82rem; color: var(--text-secondary);">Consumed: <strong id="calConsumedDisplay">--</strong></div>
+                  <div style="font-size: 0.82rem; color: var(--emerald-400);">Burned: <strong id="calBurnedDisplay">--</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Protein Highlight Meter -->
+            <div class="macro-bars-container">
+              <div class="macro-meter-item">
+                <div class="macro-meter-header">
+                  <span class="macro-meter-label">🍗 <strong>Protein (High Priority)</strong></span>
+                  <span id="proteinStatText" style="color: var(--emerald-400); font-weight: 700;">--</span>
+                </div>
+                <div class="macro-progress-track">
+                  <div id="proteinProgressFill" class="macro-progress-fill fill-protein" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <div class="macro-meter-item">
+                <div class="macro-meter-header">
+                  <span class="macro-meter-label">🌾 Carbs</span>
+                  <span id="carbsStatText" style="color: var(--text-secondary);">--</span>
+                </div>
+                <div class="macro-progress-track">
+                  <div id="carbsProgressFill" class="macro-progress-fill fill-carbs" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <div class="macro-meter-item">
+                <div class="macro-meter-header">
+                  <span class="macro-meter-label">🥑 Healthy Fats</span>
+                  <span id="fatStatText" style="color: var(--text-secondary);">--</span>
+                </div>
+                <div class="macro-progress-track">
+                  <div id="fatProgressFill" class="macro-progress-fill fill-fat" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Protein Presets -->
+            <div style="margin-top: 0.5rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Quick Healthy Logs</span>
+              <div class="quick-add-grid">
+                <button class="btn-chip" onclick="app.quickAddFoodPreset('yogurt')">+22g Greek Yogurt</button>
+                <button class="btn-chip" onclick="app.quickAddFoodPreset('chicken')">+44g Chicken Salad</button>
+                <button class="btn-chip" onclick="app.quickAddFoodPreset('shake')">+27g Whey Shake</button>
+                <button class="btn-chip" onclick="app.quickAddFoodPreset('eggs')">+20g Eggs & Toast</button>
+              </div>
+            </div>
+
+            <!-- Dedicated Streaks Showcase: No Fastfood & No Sweets -->
+            <div style="margin-top: 0.85rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Discipline & Health Streaks</span>
+              <div class="streaks-showcase-grid">
+                
+                <!-- Zero Fast Food Streak -->
+                <div class="streak-card-tile">
+                  <div class="streak-tile-info">
+                    <span class="streak-tile-title">🚫🍔 Zero Fast Food</span>
+                    <span id="noFastFoodStreakVal" class="streak-tile-flame">🔥 8d</span>
+                  </div>
+                  <button id="btnToggleFastFood" class="btn-icon-pill" style="padding: 4px 10px; font-size: 0.75rem;" onclick="app.toggleSpecificHabit('habit_no_fastfood')">Check</button>
+                </div>
+
+                <!-- Sugar-Free / Zero Sweets Streak -->
+                <div class="streak-card-tile">
+                  <div class="streak-tile-info">
+                    <span class="streak-tile-title">🚫🍭 Zero Sweets</span>
+                    <span id="noSweetsStreakVal" class="streak-tile-flame">🔥 5d</span>
+                  </div>
+                  <button id="btnToggleSweets" class="btn-icon-pill" style="padding: 4px 10px; font-size: 0.75rem;" onclick="app.toggleSpecificHabit('habit_no_sweets')">Check</button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Body Composition & Goal Weight Card -->
+          <div id="section-body-comp" class="coach-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon emerald">⚖️</div>
+                <div>
+                  <h3 class="card-title">Body Composition & Target Weight</h3>
+                  <span class="card-subtitle">Height, Weight & BMI tracking</span>
+                </div>
+              </div>
+              <button class="btn-icon-pill" onclick="app.openModal('modalLogWeight')">+ Log Weight</button>
+            </div>
+
+            <div class="body-comp-layout">
+              <div class="body-stat-box">
+                <span class="body-stat-lbl">Current Weight</span>
+                <div>
+                  <span id="bodyCurrentWeight" class="body-stat-val">78.5</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">kg</span>
+                </div>
+              </div>
+
+              <div class="body-stat-box">
+                <span class="body-stat-lbl">Person Height</span>
+                <div>
+                  <span id="bodyHeight" class="body-stat-val">175</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">cm</span>
+                </div>
+              </div>
+
+              <div class="body-stat-box">
+                <span class="body-stat-lbl">Target Weight</span>
+                <div>
+                  <span id="bodyTargetWeight" class="body-stat-val">72.0</span>
+                  <span style="font-size: 0.8rem; color: var(--emerald-400);">kg</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Weight Progress Bar & BMI -->
+            <div class="weight-progress-container">
+              <div class="weight-progress-header">
+                <span>Weight Goal Remaining: <strong id="bodyWeightToLose" class="weight-goal-diff">-6.5 kg</strong></span>
+                <span id="bodyBmiBadge" class="badge badge-emerald">BMI: 25.6 • Healthy</span>
+              </div>
+              <div class="macro-progress-track">
+                <div id="bodyWeightProgressFill" class="macro-progress-fill fill-protein" style="width: 65%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Movement & Activity -->
+          <div id="section-activity" class="coach-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon emerald">👟</div>
+                <div>
+                  <h3 class="card-title">Movement & Activity</h3>
+                  <span id="stepsTargetSub" class="card-subtitle">Daily step pacing</span>
+                </div>
+              </div>
+              <button class="btn-icon-pill" onclick="app.openModal('modalCustomActivity')">+ Workout</button>
+            </div>
+
+            <div class="steps-layout">
+              <div>
+                <span id="stepsBigNumber" class="steps-big-number">--</span>
+                <div class="steps-goal-sub">Steps Logged</div>
+              </div>
+              <div style="text-align: right; display: flex; flex-direction: column; gap: 4px;">
+                <div class="badge badge-emerald">🔥 <span id="movementCaloriesDisplay">-- kcal</span></div>
+                <div class="badge badge-azure">⏱️ <span id="activeMinutesDisplay">-- min active</span></div>
+              </div>
+            </div>
+
+            <!-- Smartwatch Live Telemetry Card -->
+            <div class="wearable-telemetry-panel">
+              <div class="wearable-header-row">
+                <div class="wearable-brand-info">
+                  <span class="wearable-watch-icon">⌚</span>
+                  <div>
+                    <div id="watchModelName" class="wearable-name-text">Galaxy Watch 6 Pro</div>
+                    <div id="watchSyncTag" class="wearable-meta-tag">Google Health Connect • Synced 2m ago</div>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <span id="watchBatteryTag" class="badge badge-emerald">🔋 86%</span>
+                  <button class="btn-icon-pill" style="padding: 4px 10px; font-size: 0.75rem;" onclick="app.openModal('modalWearableManage')">Manage Watch</button>
+                </div>
+              </div>
+
+              <!-- Metrics: Real-time Heart Rate, Watch Steps, Sleep -->
+              <div class="wearable-metrics-grid">
+                <div class="telemetry-stat-block">
+                  <span class="telemetry-stat-label"><span class="heart-pulse">💓</span> Heart Rate</span>
+                  <div>
+                    <span id="watchHeartRateBpm" class="telemetry-stat-val">72</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">BPM</span>
+                  </div>
+                  <span id="watchHrZoneBadge" class="badge badge-emerald" style="font-size: 0.65rem; padding: 2px 6px; margin-top: 4px;">Resting Zone</span>
+                </div>
+
+                <div class="telemetry-stat-block">
+                  <span class="telemetry-stat-label">👟 Sensor Steps</span>
+                  <div>
+                    <span id="watchSensorSteps" class="telemetry-stat-val">7,600</span>
+                  </div>
+                  <span class="telemetry-sub-badge">Auto-Pedometer</span>
+                </div>
+
+                <div class="telemetry-stat-block">
+                  <span class="telemetry-stat-label">🌙 Watch Sleep</span>
+                  <div>
+                    <span id="watchSleepVal" class="telemetry-stat-val">7.6h</span>
+                  </div>
+                  <span id="watchSleepQuality" class="telemetry-sub-badge">89% Quality</span>
+                </div>
+              </div>
+
+              <div class="wearable-actions-bar">
+                <span style="font-size: 0.72rem; color: var(--azure-400);">● Live watch telemetry syncing</span>
+                <button id="btnSyncWatch" class="btn-icon-pill" style="padding: 4px 12px; font-size: 0.78rem; border-color: var(--azure-500); color: var(--azure-400);" onclick="app.syncWatchTelemetry()">
+                  <span id="syncIconSpan">🔄</span> <span>Sync Watch Now</span>
+                </button>
+              </div>
+            </div>
+
+            <div style="margin-top: 0.5rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Quick Activity Logs</span>
+              <div class="quick-add-grid">
+                <button class="btn-chip" onclick="app.quickAddActivityPreset('walk')">🚶 30m Brisk Walk</button>
+                <button class="btn-chip" onclick="app.quickAddActivityPreset('gym')">🏋️ 45m Strength Gym</button>
+                <button class="btn-chip" onclick="app.quickAddActivityPreset('run')">🏃 25m Jogging</button>
+                <button class="btn-chip" onclick="app.quickAddActivityPreset('yoga')">🧘 20m Mobility</button>
+              </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Today's Workouts</span>
+              <div id="activityLogsContainer" class="activity-chips-list" style="margin-top: 0.4rem;">
+                <!-- Activity logs -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Daily Habits Checklist -->
+          <div id="section-habits" class="coach-card habits-card-wide">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon purple">🎯</div>
+                <div>
+                  <h3 class="card-title">Daily Micro-Habits</h3>
+                  <span id="habitsSummaryText" class="card-subtitle">Consistency checklist</span>
+                </div>
+              </div>
+              <span class="badge badge-purple">High Leverage</span>
+            </div>
+
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">
+              Simple, non-negotiable rituals that compound into effortless health:
+            </p>
+
+            <div id="habitsChecklistContainer" class="habits-checklist">
+              <!-- Habit check items -->
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+    <!-- Date-Wise Historical Analytics Card (Full-width Panoramic Section) -->
+    <div class="dashboard-bottom-section">
+      <div class="coach-card history-explorer-card" id="section-history-explorer">
+        <div class="card-header" style="flex-wrap: wrap; gap: 8px;">
+          <div class="card-title-group">
+            <div class="card-icon azure">📅</div>
+            <div>
+              <h3 class="card-title">Date-Wise Tracking & History Explorer</h3>
+              <span class="card-subtitle">Comprehensive historical logs: weight, protein, calories consumed vs. burned, steps, water & habits</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label for="historyRangeSelect" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Timeframe:</label>
+            <select id="historyRangeSelect" class="form-select" style="width: auto; padding: 4px 10px; font-size: 0.8rem;" onchange="app.loadDetailedHistory(this.value)">
+              <option value="7">Last 7 Days</option>
+              <option value="14" selected>Last 14 Days</option>
+              <option value="30">Last 30 Days</option>
+            </select>
+          </div>
+        <div class="table-scroll-hint mobile-only">👈 Swipe horizontally to explore full metrics 👉</div>
+
+        <!-- Table Container -->
+        <div class="table-responsive" style="margin-top: 0.5rem;">
+          <table class="date-wise-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Weight</th>
+                <th>Protein</th>
+                <th>Cals In</th>
+                <th>Burned</th>
+                <th>Net Cals</th>
+                <th>Steps</th>
+                <th>Water</th>
+                <th>Habits</th>
+                <th>Score</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="dateWiseTableBody">
+              <!-- Populated via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         ANDROID MOBILE SIMULATOR VIEW (WHEN TOGGLED)
+         ==================================================================== -->
+    <div id="phoneFrameWrapper" class="phone-frame-wrapper">
+      <div class="phone-frame">
+        <!-- Phone Notch -->
+        <div class="phone-notch">
+          <div class="phone-speaker"></div>
+          <div class="phone-camera"></div>
+        </div>
+
+        <!-- Phone Status Bar -->
+        <div class="phone-status-bar">
+          <span>09:41</span>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <span>5G</span>
+            <span>📶</span>
+            <span>🔋 98%</span>
+          </div>
+        </div>
+
+        <!-- Scrollable Mobile App Shell -->
+        <div class="phone-scroll-content">
+          
+          <!-- Mobile Header Card -->
+          <div class="coach-card score-hero" style="padding: 1.25rem 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--emerald-400);">DAILY HEALTH SCORE</span>
+              <span class="badge badge-amber" style="font-size: 0.7rem;">🔥 6d Streak</span>
+            </div>
+            
+            <div class="score-ring-container" style="width: 150px; height: 150px;">
+              <svg class="score-ring-svg" viewBox="0 0 190 190">
+                <circle class="score-ring-bg" cx="95" cy="95" r="80"></circle>
+                <circle class="score-ring-progress" cx="95" cy="95" r="80"></circle>
+              </svg>
+              <div class="score-center-info">
+                <span class="score-number" style="font-size: 2.5rem;">--</span>
+                <span class="score-total-denom">/ 100</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Mobile Actions -->
+          <div class="coach-card" style="padding: 1rem;">
+            <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem;">⚡ One-Tap Actions</div>
+            <div class="quick-add-grid" style="grid-template-columns: repeat(2, 1fr);">
+              <button class="btn-chip" onclick="app.quickAddWater(250)">💧 +250ml Water</button>
+              <button class="btn-chip" onclick="app.quickAddWater(500)">💧 +500ml Bottle</button>
+              <button class="btn-chip" onclick="app.quickAddFoodPreset('shake')">🥗 +27g Shake</button>
+              <button class="btn-chip" onclick="app.quickAddActivityPreset('walk')">🚶 30m Walk</button>
+            </div>
+          </div>
+
+          <!-- Android AI Coach Card -->
+          <div class="coach-card coach-panel" style="padding: 1rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-weight: 700; font-size: 0.9rem;">🧠 Coach Recommendation</span>
+              <span class="coach-online-dot"></span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px;">
+              Prioritize drinking 500ml of water right now to keep your mental stamina sharp through the afternoon.
+            </p>
+          </div>
+
+          <!-- Habits Mini Card -->
+          <div class="coach-card" style="padding: 1rem;">
+            <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem;">🎯 Daily Habits</div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">
+              Tap on any habit in the main list to check it off with instant haptic vibration.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Android Mobile Bottom Navigation -->
+        <nav class="mobile-bottom-nav">
+          <button class="nav-tab-item active" data-tab="today" onclick="app.switchMobileTab('today')">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span>Today</span>
+          </button>
+          <button class="nav-tab-item" data-tab="hydration" onclick="app.switchMobileTab('hydration')">
+            <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+            <span>Water</span>
+          </button>
+          <button class="nav-tab-item" data-tab="nutrition" onclick="app.switchMobileTab('nutrition')">
+            <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path></svg>
+            <span>Fuel</span>
+          </button>
+          <button class="nav-tab-item" data-tab="activity" onclick="app.switchMobileTab('activity')">
+            <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>Move</span>
+          </button>
+          <button class="nav-tab-item" data-tab="habits" onclick="app.switchMobileTab('habits')">
+            <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <span>Habits</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Native Mobile Bottom Bar (visible on real Android phone screens) -->
+  <nav class="native-mobile-nav">
+    <button class="nav-tab-item active" data-tab="today" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      <span>Today</span>
+    </button>
+    <button class="nav-tab-item" data-tab="hydration" onclick="document.getElementById('section-hydration').scrollIntoView({behavior:'smooth'})">
+      <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+      <span>Water</span>
+    </button>
+    <button class="nav-tab-item" data-tab="nutrition" onclick="document.getElementById('section-nutrition').scrollIntoView({behavior:'smooth'})">
+      <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path></svg>
+      <span>Fuel</span>
+    </button>
+    <button class="nav-tab-item" data-tab="activity" onclick="document.getElementById('section-activity').scrollIntoView({behavior:'smooth'})">
+      <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      <span>Move</span>
+    </button>
+    <button class="nav-tab-item" data-tab="habits" onclick="document.getElementById('section-habits').scrollIntoView({behavior:'smooth'})">
+      <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+      <span>Habits</span>
+    </button>
+  </nav>
+
+  <!-- ====================================================================
+       MODALS
+       ==================================================================== -->
+
+  <!-- Custom Water Modal -->
+  <div id="modalCustomWater" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">💧 Log Water Intake</h3>
+        <button class="btn-close" onclick="app.closeModal('modalCustomWater')">✕</button>
+      </div>
+      <form id="customWaterForm">
+        <div class="form-group">
+          <label class="form-label" for="customWaterAmount">Amount (Milliliters)</label>
+          <input type="number" id="customWaterAmount" class="form-input" placeholder="e.g. 400" min="50" max="3000" step="50" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="customWaterNote">Optional Note</label>
+          <input type="text" id="customWaterNote" class="form-input" placeholder="e.g. Herbal tea, sparkling water">
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Save Water Log</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom Meal Modal -->
+  <div id="modalCustomMeal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">🥗 Log Food & Nutrition</h3>
+        <button class="btn-close" onclick="app.closeModal('modalCustomMeal')">✕</button>
+      </div>
+      <form id="customMealForm">
+        <div class="form-group">
+          <label class="form-label" for="customMealName">Food / Meal Name</label>
+          <input type="text" id="customMealName" class="form-input" placeholder="e.g. Salmon Bowl with Brown Rice" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="customMealType">Meal Category</label>
+          <select id="customMealType" class="form-select">
+            <option value="Breakfast">Breakfast</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Dinner">Dinner</option>
+            <option value="Snack" selected>Snack</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="customMealCals">Calories (kcal)</label>
+            <input type="number" id="customMealCals" class="form-input" placeholder="450" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="customMealProtein">Protein (grams)</label>
+            <input type="number" id="customMealProtein" class="form-input" placeholder="35" step="0.5" required>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="customMealCarbs">Carbs (g)</label>
+            <input type="number" id="customMealCarbs" class="form-input" placeholder="40" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="customMealFat">Fat (g)</label>
+            <input type="number" id="customMealFat" class="form-input" placeholder="12" step="0.5">
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Save Meal Log</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom Activity Modal -->
+  <div id="modalCustomActivity" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">👟 Log Workout & Movement</h3>
+        <button class="btn-close" onclick="app.closeModal('modalCustomActivity')">✕</button>
+      </div>
+      <form id="customActivityForm">
+        <div class="form-group">
+          <label class="form-label" for="customActName">Activity Name</label>
+          <input type="text" id="customActName" class="form-input" placeholder="e.g. Swimming, Cycling, Gym Session" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="customActDuration">Duration (minutes)</label>
+            <input type="number" id="customActDuration" class="form-input" placeholder="30" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="customActCals">Calories Burned</label>
+            <input type="number" id="customActCals" class="form-input" placeholder="200" required>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="customActSteps">Steps (if walk/run)</label>
+            <input type="number" id="customActSteps" class="form-input" placeholder="2500">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="customActIntensity">Intensity</label>
+            <select id="customActIntensity" class="form-select">
+              <option value="Low">Low</option>
+              <option value="Moderate" selected>Moderate</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Record Workout</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Target Settings Modal -->
+  <div id="modalSettings" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ Personal Profile & Metabolic Engine</h3>
+        <button type="button" class="btn-close" onclick="app.closeModal('modalSettings')">✕</button>
+      </div>
+      <form id="targetsForm">
+        
+        <!-- Profile & Physical Attributes -->
+        <div style="font-size: 0.82rem; font-weight: 700; color: var(--azure-400); margin-bottom: 0.45rem;">👤 Body & Biological Profile</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" for="targetAge">Age (years)</label>
+            <input type="number" id="targetAge" class="form-input" value="28" min="10" max="120" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="targetGender">Biological Gender</label>
+            <select id="targetGender" class="form-select">
+              <option value="Male" selected>Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2" style="margin-top: 0.6rem;">
+          <div class="form-group">
+            <label class="form-label" for="targetHeight">Height (cm)</label>
+            <input type="number" id="targetHeight" class="form-input" value="175" step="0.5" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="targetCurrentWeight">Current Weight (kg)</label>
+            <input type="number" id="targetCurrentWeight" class="form-input" value="78.5" step="0.1" required>
+          </div>
+        </div>
+
+        <div class="form-grid-2" style="margin-top: 0.6rem;">
+          <div class="form-group">
+            <label class="form-label" for="targetStartWeight">Starting Weight (kg)</label>
+            <input type="number" id="targetStartWeight" class="form-input" value="80.0" step="0.1" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="targetGoalWeight">Target Goal Weight (kg)</label>
+            <input type="number" id="targetGoalWeight" class="form-input" value="72.0" step="0.1" required>
+          </div>
+        </div>
+
+        <!-- Fitness Goal & Activity Multiplier -->
+        <div class="form-grid-2" style="margin-top: 0.6rem;">
+          <div class="form-group">
+            <label class="form-label" for="targetFitnessGoal">Fitness Objective</label>
+            <select id="targetFitnessGoal" class="form-select">
+              <option value="Lose Weight" selected>Fat Loss / Deficit (-500 kcal)</option>
+              <option value="Gain Weight">Muscle Gain / Surplus (+350 kcal)</option>
+              <option value="Maintain">Maintenance & Recomp (0 kcal)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="targetActivityLevel">Daily Activity Level</label>
+            <select id="targetActivityLevel" class="form-select">
+              <option value="Sedentary">Sedentary (Desk Job, x1.2)</option>
+              <option value="Lightly Active">Lightly Active (1-3 d/wk, x1.375)</option>
+              <option value="Moderately Active" selected>Moderately Active (3-5 d/wk, x1.55)</option>
+              <option value="Very Active">Very Active (6-7 d/wk, x1.725)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Auto-Calculate Live Metabolism Button & Preview -->
+        <div style="margin-top: 0.85rem;">
+          <button type="button" class="btn-icon-pill" onclick="app.previewMetabolismCalculation()" style="background: rgba(56, 189, 248, 0.15); border-color: var(--azure-500); color: var(--azure-400); width: 100%; justify-content: center; padding: 8px 14px;">
+            <span>⚡ Auto-Calculate Metabolic Targets (Mifflin-St Jeor)</span>
+          </button>
+          
+          <div id="metabolismPreviewBox" class="metabolism-preview-box" style="display: none; margin-top: 0.65rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span id="metaPreviewGoalTitle" style="font-size: 0.8rem; font-weight: 700; color: var(--azure-400);">Metabolic Targets Calculated</span>
+              <span class="badge badge-emerald" style="font-size: 0.65rem;">Science-Backed</span>
+            </div>
+            <div class="metabolism-preview-grid">
+              <div class="metabolism-preview-item">
+                <div class="lbl">BMR</div>
+                <div id="metaPreviewBmr" class="val">1,744</div>
+              </div>
+              <div class="metabolism-preview-item">
+                <div class="lbl">TDEE</div>
+                <div id="metaPreviewTdee" class="val">2,703</div>
+              </div>
+              <div class="metabolism-preview-item">
+                <div class="lbl">Rec. Cals</div>
+                <div id="metaPreviewCals" class="val">2,203</div>
+              </div>
+              <div class="metabolism-preview-item">
+                <div class="lbl">Rec. Protein</div>
+                <div id="metaPreviewProt" class="val">157g</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily Targets Input Section -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.85rem; margin-top: 0.85rem;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--emerald-400); margin-bottom: 0.45rem;">🎯 Daily Nutritional & Habit Targets</div>
+          
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="targetCalories">Calorie Budget (kcal)</label>
+              <input type="number" id="targetCalories" class="form-input" value="2100" step="25" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="targetProtein">Protein Target (g)</label>
+              <input type="number" id="targetProtein" class="form-input" value="130" step="5" required>
+            </div>
+          </div>
+
+          <div class="form-grid-3" style="margin-top: 0.6rem;">
+            <div class="form-group">
+              <label class="form-label" for="targetCarbs">Carbs (g)</label>
+              <input type="number" id="targetCarbs" class="form-input" value="220">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="targetFat">Fat (g)</label>
+              <input type="number" id="targetFat" class="form-input" value="65">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="targetSleep">Sleep (hrs)</label>
+              <input type="number" id="targetSleep" class="form-input" value="8" step="0.5">
+            </div>
+          </div>
+
+          <div class="form-grid-2" style="margin-top: 0.6rem;">
+            <div class="form-group">
+              <label class="form-label" for="targetWater">Water Target (ml)</label>
+              <input type="number" id="targetWater" class="form-input" value="2500" step="100" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="targetSteps">Steps Target</label>
+              <input type="number" id="targetSteps" class="form-input" value="10000" step="500" required>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 0.6rem;">
+            <label class="form-label" for="targetWaterInterval">Water Reminder Interval</label>
+            <select id="targetWaterInterval" class="form-select">
+              <option value="30">Every 30 Minutes</option>
+              <option value="45">Every 45 Minutes</option>
+              <option value="60" selected>Every 60 Minutes (Recommended)</option>
+              <option value="90">Every 90 Minutes</option>
+              <option value="120">Every 2 Hours</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Modal Footer with Sticky Save Button -->
+        <div class="modal-footer">
+          <button type="button" class="btn-icon-pill" onclick="app.closeModal('modalSettings')">Cancel</button>
+          <button type="submit" class="btn-primary" style="flex: 1;">Save Targets & Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Log Weight Modal -->
+  <div id="modalLogWeight" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">⚖️ Log Body Weigh-In</h3>
+        <button class="btn-close" onclick="app.closeModal('modalLogWeight')">✕</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-secondary);">
+        Track morning weight to monitor fat loss progress and BMI updates.
+      </p>
+      <form id="logWeightForm">
+        <div class="form-group">
+          <label class="form-label" for="inputWeighInKg">Current Weight (Kilograms)</label>
+          <input type="number" id="inputWeighInKg" class="form-input" placeholder="e.g. 78.2" step="0.1" min="30" max="250" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputWeighInNote">Note (e.g. Fasted, Post-workout)</label>
+          <input type="text" id="inputWeighInNote" class="form-input" placeholder="Morning fasted weigh-in">
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Save Weight Log</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Smartwatch Pairing & Telemetry Modal -->
+  <div id="modalWearableManage" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">⌚ Smartwatch & Fitness Watch Manager</h3>
+        <button class="btn-close" onclick="app.closeModal('modalWearableManage')">✕</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-secondary);">
+        Connect your smartwatch to automatically stream live heart rate, auto-pedometer steps, active calorie burn, and sleep recovery.
+      </p>
+
+      <form id="wearablePairForm">
+        <div class="form-group">
+          <label class="form-label" for="wearableBrandSelect">Smartwatch Ecosystem / Brand</label>
+          <select id="wearableBrandSelect" class="form-select">
+            <option value="Samsung Galaxy Watch" selected>Samsung Galaxy Watch (Wear OS / Health Connect)</option>
+            <option value="Apple Watch">Apple Watch Series / Ultra (Apple HealthKit)</option>
+            <option value="Google Pixel Watch">Google Pixel Watch (Wear OS / Fitbit)</option>
+            <option value="Garmin">Garmin Forerunner / Fenix (Garmin Connect)</option>
+            <option value="Fitbit">Fitbit Sense / Charge (Fitbit API)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="wearableModelInput">Model Name</label>
+          <input type="text" id="wearableModelInput" class="form-input" value="Galaxy Watch 6 Pro" required>
+        </div>
+
+        <div style="background: rgba(0, 180, 216, 0.08); border: 1px solid rgba(0, 180, 216, 0.2); border-radius: var(--radius-sm); padding: 0.75rem; margin-top: 0.25rem;">
+          <div style="font-size: 0.8rem; font-weight: 700; color: var(--azure-400); margin-bottom: 4px;">📡 Direct Telemetry Push</div>
+          <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.4;">
+            Send watch sensor values manually or test live stream sync into your Daily Health Coach:
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+            <div>
+              <label style="font-size: 0.72rem; color: var(--text-secondary);">Watch Steps</label>
+              <input type="number" id="manualWatchSteps" class="form-input" placeholder="8500" style="padding: 6px 10px; font-size: 0.85rem;">
+            </div>
+            <div>
+              <label style="font-size: 0.72rem; color: var(--text-secondary);">Heart Rate (BPM)</label>
+              <input type="number" id="manualWatchHr" class="form-input" placeholder="74" style="padding: 6px 10px; font-size: 0.85rem;">
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+          <button type="button" class="btn-icon-pill" style="flex: 1; justify-content: center;" onclick="app.sendManualWatchTelemetry()">⚡ Send Sensor Data</button>
+          <button type="submit" class="btn-primary" style="flex: 1;">Pair & Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Core Scripts -->
+  <script src="/static/js/sound.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

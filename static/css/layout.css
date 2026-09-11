@@ -1,0 +1,470 @@
+/* ==========================================================================
+   DAILY HEALTH COACH - LAYOUT ARCHITECTURE
+   Responsive Web Dashboard + Android Mobile App Shell & Bottom Navigation
+   ========================================================================== */
+
+/* App Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem 1.5rem;
+  width: 100%;
+}
+
+/* Top Navigation Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--emerald-500), var(--azure-500));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-glow-emerald);
+  flex-shrink: 0;
+}
+
+.brand-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2.2;
+}
+
+.brand-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #ffffff 40%, var(--emerald-400));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Header Controls */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.streak-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--amber-400);
+}
+
+.streak-flame {
+  font-size: 1.1rem;
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+.btn-icon-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon-pill:hover, .btn-icon-pill.active {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.btn-icon-pill.active {
+  border-color: var(--emerald-500);
+  color: var(--emerald-400);
+  box-shadow: 0 0 14px var(--emerald-glow);
+}
+
+/* Date Navigator */
+.date-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  background: var(--bg-card-subtle);
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.date-info-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.date-badges-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.date-heading {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.date-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Dashboard Grid Layout (Desktop) */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* 4 Pillar Grid */
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+/* Bottom History Analytics Section */
+.dashboard-bottom-section {
+  width: 100%;
+  margin: 2rem 0 2.5rem;
+  box-sizing: border-box;
+}
+
+/* Android Phone View Frame Simulation (Switchable) */
+.phone-frame-wrapper {
+  display: none;
+  justify-content: center;
+  padding: 1rem 0 3rem;
+}
+
+.phone-frame-wrapper.active {
+  display: flex;
+}
+
+.phone-frame {
+  width: 410px;
+  max-width: 100%;
+  height: 840px;
+  background: #080b11;
+  border-radius: 44px;
+  border: 4px solid #232d42;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(16, 185, 129, 0.15);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.phone-notch {
+  width: 130px;
+  height: 24px;
+  background: #151c2c;
+  margin: 0 auto;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 100;
+}
+
+.phone-camera {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #05080e;
+}
+
+.phone-speaker {
+  width: 38px;
+  height: 4px;
+  border-radius: 4px;
+  background: #202b3d;
+}
+
+.phone-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 18px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.phone-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  padding-bottom: 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile Bottom Tab Bar */
+.mobile-bottom-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: var(--bg-glass-nav);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 0.5rem;
+  z-index: 90;
+}
+
+.nav-tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.nav-tab-item svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+.nav-tab-item.active {
+  color: var(--emerald-400);
+}
+
+.nav-tab-item.active svg {
+  stroke: var(--emerald-400);
+  filter: drop-shadow(0 0 6px var(--emerald-glow));
+}
+
+/* Native Android Mobile & Multi-Resolution Responsive Architecture */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .dashboard-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 0 1rem 5.5rem 1rem;
+  }
+  
+  /* Responsive Header */
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    padding: 0.85rem 0;
+    margin-bottom: 1.25rem;
+  }
+  .brand-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .header-actions .view-mode-btn {
+    display: none;
+  }
+  .header-actions .btn-icon-pill, .streak-pill {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* Responsive Date Bar */
+  .date-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .date-nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+  }
+  .date-nav-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 0.76rem;
+  }
+  .date-picker-wrap {
+    flex: 1.3;
+  }
+  .date-picker-input {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    padding: 5px 6px;
+    font-size: 0.76rem;
+  }
+  .date-info-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Single Column Card Grid */
+  .pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  /* Fixed Mobile Bottom Tab Bar */
+  .native-mobile-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--bg-glass-nav);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-subtle);
+    z-index: 1000;
+    align-items: center;
+    justify-content: space-around;
+    padding-bottom: env(safe-area-inset-bottom, 4px);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-container {
+    padding: 0 0.75rem 5.5rem 0.75rem;
+  }
+  .brand-title {
+    font-size: 1.15rem;
+  }
+  .brand-subtitle {
+    display: none;
+  }
+  .header-actions {
+    gap: 5px;
+  }
+  .header-actions .btn-icon-pill {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+  }
+  .streak-pill {
+    padding: 5px 8px;
+    font-size: 0.76rem;
+  }
+  .coach-card {
+    padding: 1.15rem 0.9rem;
+    gap: 1rem;
+    border-radius: var(--radius-md);
+  }
+  .date-nav-btn {
+    padding: 5px 4px;
+    font-size: 0.72rem;
+  }
+  .date-heading {
+    font-size: 1.05rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .native-mobile-nav {
+    display: none;
+  }
+}

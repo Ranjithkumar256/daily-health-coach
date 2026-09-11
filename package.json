@@ -1,0 +1,34 @@
+{
+  "name": "daily-health-coach",
+  "version": "1.0.0",
+  "description": "Daily Health Coach - Lifestyle and Fitness Web & Android Application",
+  "main": "run.py",
+  "scripts": {
+    "start": "python3 run.py",
+    "test": "./venv/bin/pytest tests",
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android"
+  },
+  "keywords": [
+    "fitness-tracker",
+    "health-coach",
+    "lifestyle",
+    "hydration",
+    "macros",
+    "habits",
+    "fastapi",
+    "android",
+    "pwa"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "dependencies": {
+    "puppeteer": "^25.10.0"
+  }
+}
