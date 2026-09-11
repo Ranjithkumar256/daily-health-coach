@@ -1254,6 +1254,13 @@ class HealthCoachApp {
   hideAuthOverlay() {
     const overlay = document.getElementById('authOverlay');
     if (overlay) overlay.style.display = 'none';
+    const termsModal = document.getElementById('modalTermsConsent');
+    const termsOpen = termsModal && termsModal.style.display !== 'none' && termsModal.classList.contains('show');
+    if (!termsOpen && document.body) {
+      document.body.classList.remove('modal-open');
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('touch-action');
+    }
   }
 
   switchAuthTab(targetTab) {

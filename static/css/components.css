@@ -1551,14 +1551,17 @@ body.modal-open {
 .auth-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 7, 18, 0.90);
+  background: rgba(4, 7, 18, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   z-index: 11000;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  justify-content: flex-start;
+  padding: 20px 12px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: authOverlayFadeIn 0.3s ease forwards;
 }
 
@@ -1570,25 +1573,27 @@ body.modal-open {
 .auth-card-container {
   width: 100%;
   max-width: 440px;
+  margin: auto;
+  flex-shrink: 0;
   background: linear-gradient(165deg, rgba(16, 24, 39, 0.96), rgba(8, 14, 26, 0.98));
   border: 1px solid rgba(16, 185, 129, 0.35);
   border-radius: 20px;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 40px rgba(16, 185, 129, 0.15);
-  padding: 32px 28px;
+  padding: 26px 24px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .auth-brand-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .auth-logo-badge {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
   background: linear-gradient(135deg, #10b981, #06b6d4);
   color: #fff;
@@ -1598,6 +1603,7 @@ body.modal-open {
   font-size: 24px;
   font-weight: 800;
   box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+  flex-shrink: 0;
 }
 
 .auth-brand-text h1 {
@@ -1612,6 +1618,67 @@ body.modal-open {
   font-size: 12.5px;
   color: var(--text-secondary);
   margin: 2px 0 0 0;
+}
+
+@media (max-width: 480px) {
+  .auth-overlay {
+    padding: 12px 10px;
+  }
+  .auth-card-container {
+    padding: 18px 16px;
+    border-radius: 16px;
+    margin: 6px auto;
+  }
+  .auth-brand-header {
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+  .auth-logo-badge {
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+    border-radius: 10px;
+  }
+  .auth-brand-text h1 {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+  .auth-brand-text p {
+    font-size: 11px;
+  }
+  .auth-tabs {
+    margin-bottom: 14px;
+  }
+  .auth-tab-btn {
+    padding: 7px 10px;
+    font-size: 12.5px;
+  }
+  .auth-form .form-group {
+    margin-bottom: 10px;
+  }
+  .auth-form .form-group label {
+    font-size: 11.5px;
+    margin-bottom: 4px;
+  }
+  .auth-form .form-control {
+    padding: 8px 10px 8px 36px;
+    font-size: 13px;
+  }
+  .auth-divider {
+    margin: 10px 0;
+  }
+  .btn-demo-quick {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .auth-restore-box {
+    margin-top: 10px !important;
+    padding: 10px 12px !important;
+  }
+  .auth-footer-note {
+    margin-top: 10px;
+    font-size: 10.5px;
+  }
 }
 
 .auth-tabs {
