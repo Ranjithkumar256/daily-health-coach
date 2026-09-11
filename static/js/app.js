@@ -1256,11 +1256,11 @@ class HealthCoachApp {
       }
       this.updateUserDisplay(res.user);
       this.hideAuthOverlay();
+      // Prompt Terms & Conditions immediately every time user logs in
+      window.BackupManager?.promptTermsOnLogin();
+
       await this.refreshData();
       this.showToast(`Welcome back, ${res.user.full_name || res.user.username}! 🌿`, 'success');
-
-      // Prompt Terms & Conditions every time user logs in
-      window.BackupManager?.promptTermsOnLogin();
     } catch (err) {
       const errMsg = err.message || 'Incorrect username or password';
       this.showAuthOverlay(errMsg, false);
@@ -1280,11 +1280,11 @@ class HealthCoachApp {
       }
       this.updateUserDisplay(res.user);
       this.hideAuthOverlay();
+      // Prompt Terms & Conditions immediately every time user registers
+      window.BackupManager?.promptTermsOnLogin();
+
       await this.refreshData();
       this.showToast(`Account created! Welcome, ${res.user.full_name}! 🚀`, 'success');
-
-      // Prompt Terms & Conditions every time user registers/logs in
-      window.BackupManager?.promptTermsOnLogin();
     } catch (err) {
       const errMsg = err.message || 'Registration failed';
       this.showAuthOverlay(errMsg, false);
