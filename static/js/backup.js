@@ -21,12 +21,28 @@
   };
 
   const BackupManager = {
+    // 1. TERMS & PERMISSIONS ONBOARDING CONSENT (Asks every session)
+    // -------------------------------------------------------------
     isTermsAccepted() {
       try {
-        const stored = localStorage.getItem(TERMS_CONSENT_KEY);
-        return stored ? JSON.parse(stored).accepted === true : false;
+        const sessionAccepted = sessionStorage.getItem('dhc_terms_accepted_session');
+        return sessionAccepted === 'true';
       } catch (e) {
         return false;
+      }
+    },
+
+    updateProfileTermsBadge() {
+      const badge = document.getElementById('profileTermsStatusBadge');
+      if (badge) {
+        const accepted = this.isTermsAccepted() || localStorage.getItem(TERMS_CONSENT_KEY);
+        if (accepted) {
+          badge.textContent = 'Active & Agreed';
+          badge.className = 'badge badge-emerald';
+        } else {
+          badge.textContent = 'Consent Pending';
+          badge.className = 'badge badge-amber';
+        }
       }
     },
 
@@ -35,13 +51,52 @@
         accepted: true,
         timestamp: new Date().toISOString(),
         version: '1.0.0',
-        permissions: ['INTERNET', 'NETWORK_STATE', 'FILE_MANAGER_STORAGE']
+        permissions: ['INTERNET', 'NETWORK_STATE', 'FILE_MANAGER_STORAGE', 'WEARABLE_TELEMETRY']
       };
       localStorage.setItem(TERMS_CONSENT_KEY, JSON.stringify(consent));
+      try {
+        sessionStorage.setItem('dhc_terms_accepted_session', 'true');
+      } catch (e) {}
+      this.clearTermsValidationError();
+      this.updateProfileTermsBadge();
+
       const modal = document.getElementById('modalTermsConsent');
       if (modal) {
         modal.classList.remove('show');
         modal.style.display = 'none';
+      }
+    },
+
+    clearTermsValidationError() {
+      const alertBox = document.getElementById('termsAgreeErrorAlert');
+      const container = document.getElementById('termsAgreeContainer');
+      const logoutOpt = document.getElementById('termsLogoutOption');
+      if (alertBox) alertBox.style.display = 'none';
+      if (container) {
+        container.style.borderColor = 'rgba(56, 189, 248, 0.25)';
+        container.style.background = 'rgba(56, 189, 248, 0.08)';
+        container.classList.remove('terms-agree-error');
+      }
+      if (logoutOpt) logoutOpt.style.display = 'none';
+    },
+
+    showTermsValidationError() {
+      const checkbox = document.getElementById('termsAgreeCheckbox');
+      const alertBox = document.getElementById('termsAgreeErrorAlert');
+      const container = document.getElementById('termsAgreeContainer');
+      const logoutOpt = document.getElementById('termsLogoutOption');
+
+      if (alertBox) alertBox.style.display = 'block';
+      if (container) {
+        container.style.borderColor = '#ef4444';
+        container.style.background = 'rgba(239, 68, 68, 0.14)';
+        container.classList.add('terms-agree-error');
+      }
+      if (logoutOpt) logoutOpt.style.display = 'flex';
+
+      if (checkbox) {
+        checkbox.focus();
+        checkbox.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     },
 
@@ -53,16 +108,16 @@
       const acceptBtn = document.getElementById('btnAcceptTerms');
       const reviewBanner = document.getElementById('termsReviewBadge');
 
+      this.clearTermsValidationError();
+
       if (checkbox && acceptBtn) {
         if (isManualReview) {
           checkbox.checked = true;
-          acceptBtn.disabled = false;
-          acceptBtn.textContent = 'Close & Return';
+          acceptBtn.textContent = 'Save & Return';
           if (reviewBanner) reviewBanner.style.display = 'block';
         } else {
           checkbox.checked = false;
-          acceptBtn.disabled = true;
-          acceptBtn.textContent = 'Accept & Get Started';
+          acceptBtn.textContent = 'Accept & Continue';
           if (reviewBanner) reviewBanner.style.display = 'none';
         }
       }
@@ -72,6 +127,7 @@
     },
 
     checkFirstLaunchTerms() {
+      this.updateProfileTermsBadge();
       if (!this.isTermsAccepted()) {
         this.showTermsModal(false);
       }
@@ -524,12 +580,35 @@
 
     const agreeCheckbox = document.getElementById('termsAgreeCheckbox');
     const acceptBtn = document.getElementById('btnAcceptTerms');
-    if (agreeCheckbox && acceptBtn) {
+    const logoutBtn = document.getElementById('btnTermsLogout');
+
+    if (agreeCheckbox) {
       agreeCheckbox.addEventListener('change', (e) => {
-        acceptBtn.disabled = !e.target.checked;
+        if (e.target.checked) {
+          BackupManager.clearTermsValidationError();
+        }
       });
+    }
+
+    if (acceptBtn) {
       acceptBtn.addEventListener('click', () => {
+        if (!agreeCheckbox || !agreeCheckbox.checked) {
+          BackupManager.showTermsValidationError();
+          return;
+        }
         BackupManager.acceptTerms();
+      });
+    }
+
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        const modal = document.getElementById('modalTermsConsent');
+        if (modal) {
+          modal.classList.remove('show');
+          modal.style.display = 'none';
+        }
+        BackupManager.clearTermsValidationError();
+        window.app?.handleLogout();
       });
     }
 
@@ -599,6 +678,11 @@
         modal.classList.remove('show');
         modal.style.display = 'none';
       }
+    });
+
+    document.getElementById('btnReviewTermsFromProfile')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      BackupManager.showTermsModal(true);
     });
 
     document.getElementById('btnReviewTermsSettings')?.addEventListener('click', (e) => {

@@ -885,6 +885,7 @@ class HealthCoachApp {
         if (document.getElementById('targetWater')) document.getElementById('targetWater').value = t.water_target_ml || 2500;
         if (document.getElementById('targetSteps')) document.getElementById('targetSteps').value = t.steps_target || 10000;
         if (document.getElementById('targetWaterInterval')) document.getElementById('targetWaterInterval').value = t.water_reminder_interval_min || 60;
+        window.BackupManager?.updateProfileTermsBadge();
       }
     }
   }
