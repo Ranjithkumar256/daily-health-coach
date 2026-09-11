@@ -69,6 +69,10 @@
         <button class="btn-icon-pill" onclick="app.openModal('modalSettings')" title="Configure Health Targets">
           <span>⚙️ Targets</span>
         </button>
+
+        <button class="btn-icon-pill" onclick="BackupManager.openBackupModal()" title="File Manager Database & Cloud Backup">
+          <span>💾 Backup</span>
+        </button>
       </div>
     </header>
 
@@ -1049,6 +1053,19 @@
           </div>
         </div>
 
+        <!-- File Manager Database & Cloud Backup Hub -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.85rem; margin-top: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+            <span style="font-size: 0.82rem; font-weight: 700; color: var(--azure-400);">💾 Database Backup & File Manager Hub</span>
+            <button type="button" class="btn-icon-pill" style="padding: 4px 10px; font-size: 0.75rem; background: rgba(56, 189, 248, 0.15); border-color: var(--azure-500); color: var(--azure-400);" onclick="app.closeModal('modalSettings'); BackupManager.openBackupModal();">
+              Open Backup Hub ↗
+            </button>
+          </div>
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+            Save your database directly to your phone's File Manager so it is never deleted when you uninstall or reinstall.
+          </p>
+        </div>
+
         <!-- Modal Footer with Sticky Save Button -->
         <div class="modal-footer">
           <button type="button" class="btn-icon-pill" onclick="app.closeModal('modalSettings')">Cancel</button>
@@ -1135,6 +1152,206 @@
     </div>
   </div>
 
+  <!-- File Manager Database & Cloud Backup Hub Modal -->
+  <div id="modalBackup" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">💾 Database & Cloud Backup Hub</h3>
+        <button class="btn-close" onclick="BackupManager.closeBackupModal()">✕</button>
+      </div>
+
+      <!-- File Manager Storage Section -->
+      <div class="terms-section-card" style="border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.04);">
+        <div class="terms-section-title" style="color: var(--emerald-400);">
+          <span>📁 Phone File Manager Storage (Survives App Uninstall)</span>
+          <span class="badge badge-emerald" style="font-size: 10px;">Offline & Permanent</span>
+        </div>
+        <p class="terms-section-text" style="margin-bottom: 10px;">
+          Exports your entire health database (profile, daily targets, calorie logs, water intake, workouts, habits, streaks) directly to your phone's File Manager (Downloads/Documents) as an open <code>.json</code> file.
+        </p>
+        <p class="terms-section-text" style="color: var(--text-muted); font-size: 11.5px; margin-bottom: 12px;">
+          💡 <strong>Survives Uninstalls:</strong> Files in your phone's File Manager are never removed when you uninstall or reinstall. You can also open, edit, or modify the JSON file with any text editor or file manager!
+        </p>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btnExportFileManager" class="btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); flex: 1; min-width: 170px; font-size: 12px; padding: 9px 12px;">
+            📥 Save to File Manager (.json)
+          </button>
+          <button id="btnImportFileManager" class="btn-icon-pill" style="border-color: var(--emerald-500); color: var(--emerald-400); flex: 1; min-width: 170px; font-size: 12px; padding: 9px 12px; justify-content: center;">
+            📂 Restore / Modify from File Manager
+          </button>
+          <input type="file" id="inputImportFileManager" accept=".json,application/json" style="display: none;">
+        </div>
+      </div>
+
+      <!-- Cloud DB Section -->
+      <div class="terms-section-card" style="border: 1px solid rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.04); margin-top: 10px;">
+        <div class="terms-section-title" style="color: var(--azure-400);">
+          <span>☁️ Cloud Database Sync & Remote Server Backup</span>
+          <span class="badge badge-azure" style="font-size: 10px;">Cloud DB Ready</span>
+        </div>
+        <p class="terms-section-text" style="margin-bottom: 6px;">
+          Synchronize or snapshot your health database to your private Cloud Database server or secure encrypted cloud vault.
+        </p>
+        <div id="cloudBackupStatus" style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px;">
+          Checking cloud backup status...
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btnBackupCloud" class="btn-primary" style="flex: 1; min-width: 120px; font-size: 12px; padding: 8px 10px;">
+            ☁️ Backup to Cloud
+          </button>
+          <button id="btnRestoreCloud" class="btn-icon-pill" style="flex: 1; min-width: 120px; font-size: 12px; padding: 8px 10px; justify-content: center;">
+            🔄 Restore Cloud DB
+          </button>
+          <button id="btnOpenCloudConfig" class="btn-icon-pill" style="border-color: var(--azure-500); color: var(--azure-400); font-size: 12px; padding: 8px 10px;">
+            ⚙️ Cloud Settings
+          </button>
+        </div>
+      </div>
+
+      <!-- Review Terms Footer Link -->
+      <div style="text-align: center; margin-top: 8px;">
+        <a href="#" id="btnReviewTermsSettings" style="font-size: 11.5px; color: var(--azure-400); text-decoration: underline;">
+          📜 Review Terms of Service & Permission Reasons
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms of Service & Permissions Onboarding Dialog -->
+  <div id="modalTermsConsent" class="modal-backdrop terms-consent-backdrop" style="display: none;">
+    <div class="modal-dialog terms-consent-dialog" style="max-width: 580px; border-radius: 16px;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3 class="modal-title" style="font-size: 17px; margin: 0;">🛡️ Welcome to Daily Health Coach</h3>
+          </div>
+          <p style="font-size: 12px; color: var(--text-secondary); margin: 4px 0 0 0;">
+            Transparency, Data Privacy & Permissions Notice
+          </p>
+        </div>
+        <span id="termsReviewBadge" class="badge badge-emerald" style="display: none; font-size: 11px;">Accepted</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 4px 0;">
+        
+        <!-- 100% On-Device Privacy -->
+        <div class="terms-section-card">
+          <div class="terms-section-title" style="color: var(--emerald-400);">
+            <span>🔒 100% On-Device Privacy Architecture</span>
+          </div>
+          <p class="terms-section-text">
+            Daily Health Coach stores all your health telemetry, nutrition, weigh-ins, and habit logs strictly on your personal device. Your physical health information belongs exclusively to you and is never sold or harvested.
+          </p>
+        </div>
+
+        <!-- Permissions & Reasons -->
+        <div class="terms-section-card">
+          <div class="terms-section-title" style="color: var(--azure-400);">
+            <span>📋 Required App Permissions & Clear Reasons</span>
+          </div>
+          <p class="terms-section-text" style="margin-bottom: 6px;">
+            To deliver full functionality while remaining completely free with unlimited access, we request the following permissions:
+          </p>
+
+          <div class="permission-item" style="border-left-color: var(--azure-500);">
+            <div class="permission-item-head">
+              <strong>🌐 Internet & Network State (android.permission.INTERNET)</strong>
+              <span class="badge badge-azure" style="font-size: 10px;">Required</span>
+            </div>
+            <p class="permission-item-desc">
+              <strong>Why it is needed:</strong> Used to display Google AdMob banner & rewarded ads that keep Daily Health Coach 100% free with unlimited features unlocked. Also used if you connect your custom Cloud Database for remote backup.
+            </p>
+          </div>
+
+          <div class="permission-item" style="border-left-color: var(--emerald-500);">
+            <div class="permission-item-head">
+              <strong>📁 Phone File Manager & Storage</strong>
+              <span class="badge badge-emerald" style="font-size: 10px;">Persistence</span>
+            </div>
+            <p class="permission-item-desc">
+              <strong>Why it is needed:</strong> Allows exporting your entire health database (.json) directly into your phone's File Manager (Downloads/Documents) so your streaks and health logs survive if you uninstall or reinstall the app, and lets you modify and re-import anytime.
+            </p>
+          </div>
+
+          <div class="permission-item" style="border-left-color: #a855f7;">
+            <div class="permission-item-head">
+              <strong>⌚ Smartwatch & Fitness Sensors (Optional)</strong>
+              <span class="badge badge-amber" style="font-size: 10px;">Optional</span>
+            </div>
+            <p class="permission-item-desc">
+              <strong>Why it is needed:</strong> Enables streaming live pedometer step counts, resting heart rate, and active calorie burn from Wear OS, Apple Watch, or fitness trackers.
+            </p>
+          </div>
+        </div>
+
+        <!-- Agreement Checkbox -->
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: var(--radius-sm); padding: 12px;">
+          <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 12px; color: var(--text-primary); line-height: 1.45;">
+            <input type="checkbox" id="termsAgreeCheckbox" style="margin-top: 2px; width: 16px; height: 16px; accent-color: var(--azure-500); cursor: pointer;">
+            <span>I have read and agree to the <strong>Terms of Service & Data Privacy Policy</strong>, and grant permissions for AdMob network monetization, File Manager backups, and optional smartwatch telemetry.</span>
+          </label>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="margin-top: 4px; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+        <button id="btnAcceptTerms" class="btn-primary" style="width: 100%; font-size: 14px; padding: 11px;" disabled>
+          Accept & Get Started
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cloud Database Configuration Modal -->
+  <div id="modalCloudConfig" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">☁️ Cloud Database Configuration</h3>
+        <button class="btn-close" id="btnCloseCloudConfig">✕</button>
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+        Configure your private cloud database or remote REST API server endpoint.
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="form-label" for="cloudConfigMode">Backup Destination Mode</label>
+        <select id="cloudConfigMode" class="form-select">
+          <option value="vault">Private Encrypted Cloud Vault (Zero Setup)</option>
+          <option value="custom">Custom Remote Cloud Database / Webhook</option>
+        </select>
+      </div>
+
+      <div id="customCloudConfigWrap" style="display: none; margin-top: 10px;">
+        <div class="form-group">
+          <label class="form-label" for="cloudConfigUrl">Cloud Database / Webhook URL</label>
+          <input type="url" id="cloudConfigUrl" class="form-input" placeholder="https://your-server.com/api/dhc-backup">
+          <span style="font-size: 11px; color: var(--text-muted); margin-top: 3px; display: block;">
+            The app will POST JSON payloads to this endpoint on backup and GET on restore.
+          </span>
+        </div>
+
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="cloudConfigKey">Authorization API Key / Token (Optional)</label>
+          <input type="password" id="cloudConfigKey" class="form-input" placeholder="Bearer eyJhbGciOi...">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-primary); cursor: pointer;">
+          <input type="checkbox" id="cloudConfigAutoSync" style="width: 15px; height: 15px; accent-color: var(--azure-500);">
+          <span>Automatically snapshot database whenever day logs are saved</span>
+        </label>
+      </div>
+
+      <div class="modal-footer" style="margin-top: 12px;">
+        <button type="button" class="btn-primary" id="btnSaveCloudConfig" style="width: 100%;">
+          Save Configuration
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
@@ -1145,6 +1362,7 @@
   <script src="js/sound.js"></script>
   <script src="js/api.js"></script>
   <script src="js/charts.js"></script>
+  <script src="js/backup.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
