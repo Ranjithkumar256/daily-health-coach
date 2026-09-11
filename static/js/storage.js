@@ -1,10 +1,14 @@
 /**
  * Daily Health Coach - On-Device Storage & Local Heuristic Engine
  * Enables 100% Standalone, Zero-Server Operation with persistent LocalStorage.
+ * Strictly isolates demo user sample data from real registered user accounts.
  */
 
 (function () {
   const STORAGE_KEYS = {
+    USERS: 'dhc_local_users_store_v2',
+    USER: 'dhc_local_user_v1',
+    AUTH_TOKEN: 'dhc_auth_token',
     TARGETS: 'dhc_targets_v1',
     HABITS: 'dhc_habits_v1',
     WATER_LOGS: 'dhc_water_logs_v1',
@@ -27,6 +31,8 @@
     water_target_ml: 2500,
     calories_target: 2000,
     protein_target_g: 130,
+    carbs_target_g: 220,
+    fat_target_g: 65,
     steps_target: 8000,
     current_weight_kg: 72.5,
     target_weight_kg: 68.0,
@@ -45,11 +51,217 @@
     { id: 5, title: '10 Mins Evening Screen-Free Wind Down', category: 'Recovery', icon: '🌙', streak_count: 4 }
   ];
 
+  const CLEAN_HABITS = DEFAULT_HABITS.map(h => ({ ...h, streak_count: 0 }));
+
   const LocalDB = {
     init() {
+      this.getUsersList();
       if (!localStorage.getItem(STORAGE_KEYS.TARGETS)) {
         this.resetDefaults();
       }
+    },
+
+    getCurrentUser() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.USER);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+
+    getUsersList() {
+      let users = [];
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.USERS);
+        if (raw) users = JSON.parse(raw);
+      } catch (e) {
+        users = [];
+      }
+      if (!Array.isArray(users)) users = [];
+
+      // Ensure default demo user exists
+      const demoExists = users.some(u => u.username === 'demo' || u.id === 1);
+      if (!demoExists) {
+        users.unshift({
+          id: 1,
+          username: 'demo',
+          email: 'demo@dailyhealthcoach.app',
+          full_name: 'Demo Athlete',
+          password: 'demo123',
+          is_demo: true,
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      }
+      return users;
+    },
+
+    getUserKey(baseKey) {
+      const user = this.getCurrentUser();
+      if (!user || user.is_demo || user.username === 'demo') {
+        return baseKey;
+      }
+      return `${baseKey}_u${user.id}`;
+    },
+
+    getItem(baseKey, defaultValue = null) {
+      const k = this.getUserKey(baseKey);
+      const val = localStorage.getItem(k);
+      if (val === null) return defaultValue;
+      try {
+        return JSON.parse(val);
+      } catch (e) {
+        return defaultValue;
+      }
+    },
+
+    setItem(baseKey, value) {
+      const k = this.getUserKey(baseKey);
+      localStorage.setItem(k, JSON.stringify(value));
+    },
+
+    ensureCleanUserData(userId) {
+      const uKey = (k) => `${k}_u${userId}`;
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.TARGETS))) {
+        localStorage.setItem(uKey(STORAGE_KEYS.TARGETS), JSON.stringify(DEFAULT_TARGETS));
+      }
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.HABITS))) {
+        // Real user gets initial habits with 0 streaks
+        const freshHabits = DEFAULT_HABITS.map(h => ({ ...h, streak_count: 0 }));
+        localStorage.setItem(uKey(STORAGE_KEYS.HABITS), JSON.stringify(freshHabits));
+      }
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.WATER_LOGS))) {
+        localStorage.setItem(uKey(STORAGE_KEYS.WATER_LOGS), JSON.stringify([]));
+      }
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.FOOD_LOGS))) {
+        localStorage.setItem(uKey(STORAGE_KEYS.FOOD_LOGS), JSON.stringify([]));
+      }
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.ACTIVITY_LOGS))) {
+        localStorage.setItem(uKey(STORAGE_KEYS.ACTIVITY_LOGS), JSON.stringify([]));
+      }
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.WEIGHT_LOGS))) {
+        localStorage.setItem(uKey(STORAGE_KEYS.WEIGHT_LOGS), JSON.stringify([
+          { id: 1, weight_kg: DEFAULT_TARGETS.current_weight_kg, date: getTodayString(), timestamp: getTimestampString(), note: 'Initial baseline weigh-in' }
+        ]));
+      }
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.WEARABLE))) {
+        localStorage.setItem(uKey(STORAGE_KEYS.WEARABLE), JSON.stringify({
+          paired: false,
+          brand: 'None',
+          model_name: 'Not Paired',
+          last_sync: 'Never',
+          battery_pct: 100,
+          steps: 0,
+          heart_rate_bpm: 72,
+          active_calories: 0,
+          sleep_hours: 0,
+          sleep_quality_pct: 0,
+          hr_zone: 'Resting',
+          resting_hr: 60
+        }));
+      }
+      if (!localStorage.getItem(uKey(STORAGE_KEYS.HABIT_COMPLETIONS))) {
+        localStorage.setItem(uKey(STORAGE_KEYS.HABIT_COMPLETIONS), JSON.stringify({}));
+      }
+    },
+
+    login(ident, password) {
+      const users = this.getUsersList();
+      const cleanIdent = (ident || '').trim().toLowerCase();
+      const matched = users.find(u =>
+        (u.username && u.username.toLowerCase() === cleanIdent) ||
+        (u.email && u.email.toLowerCase() === cleanIdent)
+      );
+
+      if (!matched || matched.password !== password) {
+        throw new Error('Incorrect username or password');
+      }
+
+      const isDemo = Boolean(matched.is_demo || matched.username === 'demo');
+      const safeUser = {
+        id: matched.id,
+        username: matched.username,
+        email: matched.email,
+        full_name: matched.full_name || matched.username,
+        is_demo: isDemo,
+        created_at: matched.created_at
+      };
+
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(safeUser));
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, 'dhc_local_token_' + safeUser.id);
+
+      if (!isDemo) {
+        this.ensureCleanUserData(safeUser.id);
+      }
+
+      return {
+        user: safeUser,
+        token: 'dhc_local_token_' + safeUser.id,
+        message: 'Logged in successfully'
+      };
+    },
+
+    register(fullName, username, email, password) {
+      const cleanUsername = (username || '').trim().toLowerCase();
+      const cleanEmail = (email || `${cleanUsername}@dailyhealthcoach.local`).trim().toLowerCase();
+      const cleanFullName = (fullName || cleanUsername).trim();
+      const pass = (password || '').trim();
+
+      if (!cleanUsername || !pass) {
+        throw new Error('Username and password are required');
+      }
+      if (cleanUsername.length < 3) {
+        throw new Error('Username must be at least 3 characters long');
+      }
+      if (pass.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+
+      const users = this.getUsersList();
+      if (users.some(u => (u.username && u.username.toLowerCase() === cleanUsername) || (u.email && u.email.toLowerCase() === cleanEmail))) {
+        throw new Error('Username or email is already registered');
+      }
+
+      const newUser = {
+        id: Date.now(),
+        username: cleanUsername,
+        email: cleanEmail,
+        full_name: cleanFullName,
+        password: pass,
+        is_demo: false,
+        created_at: new Date().toISOString()
+      };
+
+      users.push(newUser);
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+
+      const safeUser = {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        full_name: newUser.full_name,
+        is_demo: false,
+        created_at: newUser.created_at
+      };
+
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(safeUser));
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, 'dhc_local_token_' + safeUser.id);
+
+      // Initialize clean slate for this new real user
+      this.ensureCleanUserData(newUser.id);
+
+      return {
+        user: safeUser,
+        token: 'dhc_local_token_' + safeUser.id,
+        message: 'Registration successful'
+      };
+    },
+
+    logout() {
+      localStorage.removeItem(STORAGE_KEYS.USER);
+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      return { success: true, message: 'Logged out successfully' };
     },
 
     resetDefaults() {
@@ -57,7 +269,7 @@
       localStorage.setItem(STORAGE_KEYS.TARGETS, JSON.stringify(DEFAULT_TARGETS));
       localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(DEFAULT_HABITS));
 
-      // Seed initial sample logs for today
+      // Seed initial sample logs for today (demo day data)
       const sampleWater = [
         { id: 1, amount_ml: 500, timestamp: '07:30 AM', date: today, note: 'Morning wake-up glass' },
         { id: 2, amount_ml: 350, timestamp: '10:15 AM', date: today, note: 'Desk hydration mug' },
@@ -99,7 +311,7 @@
       };
       localStorage.setItem(STORAGE_KEYS.WEARABLE, JSON.stringify(sampleWearable));
 
-      // Mark first 2 habits done for today
+      // Mark first 2 habits done for today in demo mode
       const completions = {};
       completions[`${today}_1`] = true;
       completions[`${today}_2`] = true;
@@ -113,21 +325,24 @@
     },
 
     getTargets() {
-      const t = localStorage.getItem(STORAGE_KEYS.TARGETS);
-      return t ? JSON.parse(t) : { ...DEFAULT_TARGETS };
+      const t = this.getItem(STORAGE_KEYS.TARGETS);
+      return t ? t : { ...DEFAULT_TARGETS };
     },
 
     setTargets(targets) {
       const cur = this.getTargets();
       const updated = { ...cur, ...targets };
-      localStorage.setItem(STORAGE_KEYS.TARGETS, JSON.stringify(updated));
+      this.setItem(STORAGE_KEYS.TARGETS, updated);
       return updated;
     },
 
     getHabits(date) {
       const targetDate = date || getTodayString();
-      const habits = JSON.parse(localStorage.getItem(STORAGE_KEYS.HABITS) || '[]');
-      const completions = JSON.parse(localStorage.getItem(STORAGE_KEYS.HABIT_COMPLETIONS) || '{}');
+      const user = this.getCurrentUser();
+      const isDemo = !user || user.is_demo || user.username === 'demo';
+      const defaultHabitList = isDemo ? DEFAULT_HABITS : CLEAN_HABITS;
+      const habits = this.getItem(STORAGE_KEYS.HABITS, defaultHabitList);
+      const completions = this.getItem(STORAGE_KEYS.HABIT_COMPLETIONS, {});
 
       return habits.map(h => ({
         ...h,
@@ -138,18 +353,18 @@
 
     toggleHabit(habitId, date) {
       const targetDate = date || getTodayString();
-      const completions = JSON.parse(localStorage.getItem(STORAGE_KEYS.HABIT_COMPLETIONS) || '{}');
+      const completions = this.getItem(STORAGE_KEYS.HABIT_COMPLETIONS, {});
       const key = `${targetDate}_${habitId}`;
       const isCompleted = !completions[key];
       completions[key] = isCompleted;
-      localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify(completions));
+      this.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, completions);
 
       // Update streak count
-      const habits = JSON.parse(localStorage.getItem(STORAGE_KEYS.HABITS) || '[]');
+      const habits = this.getItem(STORAGE_KEYS.HABITS, DEFAULT_HABITS);
       const habit = habits.find(h => h.id === habitId);
       if (habit) {
         habit.streak_count = isCompleted ? (habit.streak_count || 0) + 1 : Math.max(0, (habit.streak_count || 1) - 1);
-        localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
+        this.setItem(STORAGE_KEYS.HABITS, habits);
       }
 
       return this.getTodaySummary(targetDate);
@@ -158,13 +373,13 @@
     // --- Water Logs ---
     getWaterLogs(date) {
       const targetDate = date || getTodayString();
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.WATER_LOGS) || '[]');
+      const all = this.getItem(STORAGE_KEYS.WATER_LOGS, []);
       return all.filter(item => item.date === targetDate);
     },
 
     addWaterLog(amount_ml, note, date) {
       const targetDate = date || getTodayString();
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.WATER_LOGS) || '[]');
+      const all = this.getItem(STORAGE_KEYS.WATER_LOGS, []);
       const entry = {
         id: Date.now(),
         amount_ml: parseInt(amount_ml, 10),
@@ -173,28 +388,28 @@
         date: targetDate
       };
       all.unshift(entry);
-      localStorage.setItem(STORAGE_KEYS.WATER_LOGS, JSON.stringify(all));
+      this.setItem(STORAGE_KEYS.WATER_LOGS, all);
       return this.getTodaySummary(targetDate);
     },
 
     deleteWaterLog(id, date) {
       const targetDate = date || getTodayString();
-      let all = JSON.parse(localStorage.getItem(STORAGE_KEYS.WATER_LOGS) || '[]');
+      let all = this.getItem(STORAGE_KEYS.WATER_LOGS, []);
       all = all.filter(item => item.id !== parseInt(id, 10));
-      localStorage.setItem(STORAGE_KEYS.WATER_LOGS, JSON.stringify(all));
+      this.setItem(STORAGE_KEYS.WATER_LOGS, all);
       return this.getTodaySummary(targetDate);
     },
 
     // --- Food Logs ---
     getFoodLogs(date) {
       const targetDate = date || getTodayString();
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOOD_LOGS) || '[]');
+      const all = this.getItem(STORAGE_KEYS.FOOD_LOGS, []);
       return all.filter(item => item.date === targetDate);
     },
 
     addFoodLog(entry) {
       const targetDate = entry.date || getTodayString();
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOOD_LOGS) || '[]');
+      const all = this.getItem(STORAGE_KEYS.FOOD_LOGS, []);
       const newEntry = {
         id: Date.now(),
         name: entry.name || 'Meal',
@@ -207,28 +422,28 @@
         date: targetDate
       };
       all.unshift(newEntry);
-      localStorage.setItem(STORAGE_KEYS.FOOD_LOGS, JSON.stringify(all));
+      this.setItem(STORAGE_KEYS.FOOD_LOGS, all);
       return this.getTodaySummary(targetDate);
     },
 
     deleteFoodLog(id, date) {
       const targetDate = date || getTodayString();
-      let all = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOOD_LOGS) || '[]');
+      let all = this.getItem(STORAGE_KEYS.FOOD_LOGS, []);
       all = all.filter(item => item.id !== parseInt(id, 10));
-      localStorage.setItem(STORAGE_KEYS.FOOD_LOGS, JSON.stringify(all));
+      this.setItem(STORAGE_KEYS.FOOD_LOGS, all);
       return this.getTodaySummary(targetDate);
     },
 
     // --- Activity Logs ---
     getActivityLogs(date) {
       const targetDate = date || getTodayString();
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOGS) || '[]');
+      const all = this.getItem(STORAGE_KEYS.ACTIVITY_LOGS, []);
       return all.filter(item => item.date === targetDate);
     },
 
     addActivityLog(entry) {
       const targetDate = entry.date || getTodayString();
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOGS) || '[]');
+      const all = this.getItem(STORAGE_KEYS.ACTIVITY_LOGS, []);
       const newEntry = {
         id: Date.now(),
         name: entry.name || entry.activity_type || 'Workout',
@@ -240,21 +455,21 @@
         date: targetDate
       };
       all.unshift(newEntry);
-      localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOGS, JSON.stringify(all));
+      this.setItem(STORAGE_KEYS.ACTIVITY_LOGS, all);
       return this.getTodaySummary(targetDate);
     },
 
     deleteActivityLog(id, date) {
       const targetDate = date || getTodayString();
-      let all = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOGS) || '[]');
+      let all = this.getItem(STORAGE_KEYS.ACTIVITY_LOGS, []);
       all = all.filter(item => item.id !== parseInt(id, 10));
-      localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOGS, JSON.stringify(all));
+      this.setItem(STORAGE_KEYS.ACTIVITY_LOGS, all);
       return this.getTodaySummary(targetDate);
     },
 
     // --- Weight Logs ---
     getWeightLogs() {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.WEIGHT_LOGS) || '[]');
+      return this.getItem(STORAGE_KEYS.WEIGHT_LOGS, []);
     },
 
     addWeightLog(weight_kg, note, date) {
@@ -264,24 +479,24 @@
         id: Date.now(),
         weight_kg: parseFloat(weight_kg),
         note: note || '',
-        date: targetDate
+        date: targetDate,
+        timestamp: getTimestampString()
       };
       all.unshift(newEntry);
-      localStorage.setItem(STORAGE_KEYS.WEIGHT_LOGS, JSON.stringify(all));
+      this.setItem(STORAGE_KEYS.WEIGHT_LOGS, all);
       this.setTargets({ current_weight_kg: parseFloat(weight_kg) });
       return newEntry;
     },
 
     // --- Wearable ---
     getWearable() {
-      const w = localStorage.getItem(STORAGE_KEYS.WEARABLE);
-      return w ? JSON.parse(w) : { paired: false };
+      return this.getItem(STORAGE_KEYS.WEARABLE, { paired: false });
     },
 
     saveWearable(payload) {
       const cur = this.getWearable();
       const updated = { ...cur, ...payload, paired: true };
-      localStorage.setItem(STORAGE_KEYS.WEARABLE, JSON.stringify(updated));
+      this.setItem(STORAGE_KEYS.WEARABLE, updated);
       return updated;
     },
 
@@ -291,13 +506,16 @@
       w.heart_rate_bpm = Math.floor(Math.random() * 25 + 68);
       w.active_calories = (w.active_calories || 200) + Math.floor(Math.random() * 25 + 10);
       w.last_sync = 'Just now';
-      localStorage.setItem(STORAGE_KEYS.WEARABLE, JSON.stringify(w));
+      this.setItem(STORAGE_KEYS.WEARABLE, w);
       return w;
     },
 
     // --- Scoring & Full Summary Generator ---
     getTodaySummary(date) {
       const targetDate = date || getTodayString();
+      const user = this.getCurrentUser();
+      const isDemo = !user || user.is_demo || user.username === 'demo';
+
       const targets = this.getTargets();
       const waterLogs = this.getWaterLogs(targetDate);
       const foodLogs = this.getFoodLogs(targetDate);
@@ -323,7 +541,7 @@
       const water_ratio = Math.min(1.0, water_total_ml / Math.max(1, targets.water_target_ml));
       const steps_ratio = Math.min(1.0, steps_total / Math.max(1, targets.steps_target));
       const protein_ratio = Math.min(1.0, protein_total_g / Math.max(1, targets.protein_target_g));
-      const habits_ratio = habits_completed / Math.max(1, habits_total);
+      const habits_ratio = habits_total > 0 ? (habits_completed / habits_total) : 0;
 
       const water_score = Math.round(water_ratio * 25);
       const steps_score = Math.round(steps_ratio * 25);
@@ -350,7 +568,7 @@
           icon: '🌊'
         });
       } else {
-        const left = targets.water_target_ml - water_total_ml;
+        const left = Math.max(0, targets.water_target_ml - water_total_ml);
         coach_tips.push({
           id: 'hydra_left',
           category: 'hydration',
@@ -388,21 +606,21 @@
       // Action checklist
       const what_can_do_actions = [
         {
-          title: water_total_ml >= targets.water_target_ml ? 'Hydration Target Completed' : `Drink ${targets.water_target_ml - water_total_ml}ml Water`,
+          title: water_total_ml >= targets.water_target_ml ? 'Hydration Target Completed' : `Drink ${Math.max(0, targets.water_target_ml - water_total_ml)}ml Water`,
           subtitle: water_total_ml >= targets.water_target_ml ? `${water_total_ml}ml logged today! Great job.` : 'Hit your cell hydration quota',
           category: 'hydration',
           done: water_total_ml >= targets.water_target_ml,
           icon: '💧'
         },
         {
-          title: protein_total_g >= targets.protein_target_g ? 'Protein Goal Achieved' : `Fuel with ${Math.round(targets.protein_target_g - protein_total_g)}g Protein`,
+          title: protein_total_g >= targets.protein_target_g ? 'Protein Goal Achieved' : `Fuel with ${Math.max(0, Math.round(targets.protein_target_g - protein_total_g))}g Protein`,
           subtitle: `${protein_total_g.toFixed(0)}g / ${targets.protein_target_g}g logged today`,
           category: 'protein',
           done: protein_total_g >= targets.protein_target_g,
           icon: '🍗'
         },
         {
-          title: steps_total >= targets.steps_target ? 'Step Goal Achieved' : `Walk ${targets.steps_target - steps_total} More Steps`,
+          title: steps_total >= targets.steps_target ? 'Step Goal Achieved' : `Walk ${Math.max(0, targets.steps_target - steps_total)} More Steps`,
           subtitle: `${steps_total.toLocaleString()} / ${targets.steps_target.toLocaleString()} steps tracked`,
           category: 'movement',
           done: steps_total >= targets.steps_target,
@@ -410,18 +628,32 @@
         }
       ];
 
+      const water_progress_pct = Math.round(water_ratio * 100);
+      const steps_progress_pct = Math.round(steps_ratio * 100);
+      const protein_progress_pct = Math.round(protein_ratio * 100);
+      const calories_remaining = Math.max(0, (targets.calories_target || 2000) - food_calories);
+      const active_minutes_total = activityLogs.reduce((acc, x) => acc + (x.duration_minutes || 0), 0);
+
+      const streak_days = isDemo ? 6 : Math.max(0, habits.reduce((max, h) => Math.max(max, h.streak_count || 0), 0));
+
       return {
         date: targetDate,
         health_score,
         health_grade: grade,
+        streak_days,
         water_total_ml,
+        water_progress_pct,
         calories_consumed: food_calories,
         calories_burned,
+        calories_remaining,
         net_calories: food_calories - calories_burned,
         protein_total_g,
+        protein_progress_pct,
         carbs_total_g,
         fat_total_g,
         steps_total,
+        steps_progress_pct,
+        active_minutes_total,
         habits_completed,
         habits_total,
         targets,
@@ -442,8 +674,8 @@
           projected_completion_date: this._getRelativeDateStr(42),
           how_much_done_summary: `Target weight: ${targets.target_weight_kg} kg from ${targets.current_weight_kg} kg.`,
           weight_shifted_kg: 0.7,
-          goal_achieved_pct: 35,
-          total_days_active: 8,
+          goal_achieved_pct: isDemo ? 35 : 0,
+          total_days_active: isDemo ? 8 : (waterLogs.length > 0 || foodLogs.length > 0 ? 1 : 0),
           what_can_do_actions
         }
       };
@@ -457,11 +689,11 @@
         const daySummary = this.getTodaySummary(d);
         history.push({
           date: d,
-          health_score: daySummary.health_score || 75,
-          water_ml: daySummary.water_total_ml || 2000,
-          protein_g: daySummary.protein_total_g || 110,
-          steps: daySummary.steps_total || 7500,
-          calories_consumed: daySummary.calories_consumed || 1900
+          health_score: daySummary.health_score || 0,
+          water_ml: daySummary.water_total_ml || 0,
+          protein_g: daySummary.protein_total_g || 0,
+          steps: daySummary.steps_total || 0,
+          calories_consumed: daySummary.calories_consumed || 0
         });
       }
       return history;
@@ -478,23 +710,29 @@
 
         records.push({
           date: d,
+          label: label,
           display_label: label,
-          water_total_ml: summary.water_total_ml,
-          calories_consumed: summary.calories_consumed,
-          calories_burned: summary.calories_burned,
-          net_calories: summary.net_calories,
-          protein_total_g: summary.protein_total_g,
-          carbs_total_g: summary.carbs_total_g,
-          fat_total_g: summary.fat_total_g,
-          steps_total: summary.steps_total,
-          habits_completed: summary.habits_completed,
-          habits_total: summary.habits_total,
-          health_score: summary.health_score,
-          health_grade: summary.health_grade,
-          weight_kg: summary.targets.current_weight_kg,
-          water_count: summary.water_logs.length,
-          food_count: summary.food_logs.length,
-          activity_count: summary.activity_logs.length
+          water_ml: summary.water_total_ml || 0,
+          water_total_ml: summary.water_total_ml || 0,
+          calories_consumed: summary.calories_consumed || 0,
+          calories_burned: summary.calories_burned || 0,
+          net_calories: summary.net_calories || 0,
+          protein_g: summary.protein_total_g || 0,
+          protein_total_g: summary.protein_total_g || 0,
+          carbs_g: summary.carbs_total_g || 0,
+          carbs_total_g: summary.carbs_total_g || 0,
+          fat_g: summary.fat_total_g || 0,
+          fat_total_g: summary.fat_total_g || 0,
+          steps: summary.steps_total || 0,
+          steps_total: summary.steps_total || 0,
+          habits_completed: summary.habits_completed || 0,
+          habits_total: summary.habits_total || 5,
+          health_score: summary.health_score || 0,
+          health_grade: summary.health_grade || 'Needs Attention',
+          weight_kg: (summary.targets && summary.targets.current_weight_kg) || 72.5,
+          water_count: (summary.water_logs && summary.water_logs.length) || 0,
+          food_count: (summary.food_logs && summary.food_logs.length) || 0,
+          activity_count: (summary.activity_logs && summary.activity_logs.length) || 0
         });
       }
       return records;

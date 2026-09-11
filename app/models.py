@@ -236,3 +236,34 @@ class HistoryDay(BaseModel):
     calories: int
     protein_g: float
     habits_completed: int
+
+
+class UserRegister(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=6)
+    full_name: str = Field(default="User", max_length=100)
+
+
+class UserLogin(BaseModel):
+    username_or_email: Optional[str] = None
+    username: Optional[str] = None
+    password: str
+
+    def get_identifier(self) -> str:
+        return (self.username_or_email or self.username or "").strip().lower()
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    full_name: str
+    is_demo: bool = False
+    created_at: Optional[str] = None
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: UserResponse
+    message: str = "Success"

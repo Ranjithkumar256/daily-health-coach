@@ -62,16 +62,24 @@
           <span>🔊 Sound On</span>
         </button>
 
-        <button class="btn-icon-pill" onclick="app.resetToDemo()" title="Reset to rich demo day data">
-          <span>⚡ Demo Day</span>
-        </button>
-
         <button class="btn-icon-pill" onclick="app.openModal('modalSettings')" title="Configure Health Targets">
           <span>⚙️ Targets</span>
         </button>
 
         <button class="btn-icon-pill" onclick="BackupManager.openBackupModal()" title="File Manager Database & Cloud Backup">
           <span>💾 Backup</span>
+        </button>
+
+        <!-- Active User Profile Badge -->
+        <div class="user-profile-badge" id="userProfileBadge" style="display: none;">
+          <span class="user-avatar-circle">👤</span>
+          <span id="headerUserName" style="font-size: 12.5px; font-weight: 600; color: #fff;">Demo Athlete</span>
+          <span id="headerDemoTag" class="badge badge-azure" style="font-size: 10px; padding: 2px 6px;">Demo</span>
+        </div>
+
+        <!-- Sign Out Button -->
+        <button class="btn-icon-pill btn-sign-out" id="headerSignOutBtn" onclick="app.handleLogout()" title="Sign Out" style="display: none;">
+          <span>🚪 Sign Out</span>
         </button>
       </div>
     </header>
@@ -1222,6 +1230,110 @@
         <a href="#" id="btnReviewTermsSettings" style="font-size: 11.5px; color: var(--azure-400); text-decoration: underline;">
           📜 Review Terms of Service & Permission Reasons
         </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       AUTHENTICATION & USER ISOLATION MODAL
+       ==================================================================== -->
+  <div class="auth-overlay" id="authOverlay" style="display: none; z-index: 11000;">
+    <div class="auth-card-container">
+      <!-- Brand Header -->
+      <div class="auth-brand-header">
+        <div class="auth-logo-badge">🌿</div>
+        <div class="auth-brand-text">
+          <h1>Daily Health Coach</h1>
+          <p>Smart Habits, Nutrition & Lifestyle Engine</p>
+        </div>
+      </div>
+
+      <!-- Auth Switcher Tabs -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="tabSignInBtn" data-target="signInTab">Sign In</button>
+        <button type="button" class="auth-tab-btn" id="tabSignUpBtn" data-target="signUpTab">Create Account</button>
+      </div>
+
+      <div class="auth-alert" id="authAlert" style="display: none;"></div>
+
+      <!-- SIGN IN TAB -->
+      <div class="auth-tab-pane active" id="signInTab">
+        <form id="formSignIn" class="auth-form">
+          <div class="form-group">
+            <label for="loginUsername">Username or Email</label>
+            <div class="input-with-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <input type="text" id="loginUsername" class="form-control" placeholder="Enter username or email" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <div class="input-with-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnSubmitLogin" style="width: 100%;">
+            <span>Sign In to Health Coach</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </form>
+
+        <div class="auth-divider"><span>OR</span></div>
+
+        <!-- Quick Demo Login Button -->
+        <button type="button" class="btn btn-demo-quick" id="btnQuickDemoLogin" title="One-click Login as Demo User" style="width: 100%;">
+          <span class="demo-bolt">⚡</span>
+          <span>Quick Demo Login (Pre-loaded Sample Data)</span>
+        </button>
+      </div>
+
+      <!-- SIGN UP TAB -->
+      <div class="auth-tab-pane" id="signUpTab" style="display: none;">
+        <form id="formSignUp" class="auth-form">
+          <div class="form-group">
+            <label for="regFullName">Full Name</label>
+            <div class="input-with-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <input type="text" id="regFullName" class="form-control" placeholder="e.g. Ranjith Kumar" required autocomplete="name">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regUsername">Username</label>
+            <div class="input-with-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg>
+              <input type="text" id="regUsername" class="form-control" placeholder="Unique username (min 3 chars)" required minlength="3" autocomplete="username">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regEmail">Email Address</label>
+            <div class="input-with-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <input type="email" id="regEmail" class="form-control" placeholder="e.g. ranjith@example.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regPassword">Create Password</label>
+            <div class="input-with-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <input type="password" id="regPassword" class="form-control" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnSubmitRegister" style="width: 100%;">
+            <span>Create Free Account</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </form>
+      </div>
+
+      <div class="auth-footer-note">
+        🔒 <span>Encrypted & isolated health space with PBKDF2-SHA256 password protection</span>
       </div>
     </div>
   </div>

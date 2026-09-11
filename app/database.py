@@ -4,13 +4,33 @@ Handles schema initialization, CRUD operations, and transaction management.
 """
 import sqlite3
 import os
-from datetime import datetime
+import hashlib
+import secrets
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "health_coach.db"))
 
 
 _db_initialized = False
+
+def hash_password(password: str, salt: Optional[str] = None) -> tuple[str, str]:
+    if not salt:
+        salt = secrets.token_hex(16)
+    pw_hash = hashlib.pbkdf2_hmac(
+        'sha256',
+        password.encode('utf-8'),
+        salt.encode('utf-8'),
+        100000
+    ).hex()
+    return pw_hash, salt
+
+def verify_password(password: str, pw_hash: str, salt: str) -> bool:
+    new_hash, _ = hash_password(password, salt)
+    return secrets.compare_digest(new_hash, pw_hash)
+
+def generate_session_token() -> str:
+    return secrets.token_urlsafe(32)
 
 def get_connection() -> sqlite3.Connection:
     global _db_initialized
@@ -185,6 +205,107 @@ def init_db():
             )
         """)
 
+        # Users table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                password_salt TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # User Sessions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT UNIQUE NOT NULL,
+                user_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Ensure default demo user exists
+        cursor.execute("SELECT id FROM users WHERE username = 'demo'")
+        if not cursor.fetchone():
+            p_hash, p_salt = hash_password("demo123")
+            cursor.execute("""
+                INSERT INTO users (username, email, password_hash, password_salt, full_name)
+                VALUES ('demo', 'demo@dailyhealthcoach.app', ?, ?, 'Demo Athlete')
+            """, (p_hash, p_salt))
+
+        conn.commit()
+
+
+# --- User Authentication CRUD ---
+def get_user_by_username_or_email(ident: str) -> Optional[Dict[str, Any]]:
+    clean = ident.strip().lower()
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM users WHERE username = ? OR email = ?", (clean, clean)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def create_user(username: str, email: str, password: str, full_name: str) -> Dict[str, Any]:
+    username_clean = username.strip().lower()
+    email_clean = email.strip().lower()
+    p_hash, p_salt = hash_password(password)
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO users (username, email, password_hash, password_salt, full_name)
+            VALUES (?, ?, ?, ?, ?)
+        """, (username_clean, email_clean, p_hash, p_salt, full_name.strip()))
+        user_id = cursor.lastrowid
+        conn.commit()
+        return {
+            "id": user_id,
+            "username": username_clean,
+            "email": email_clean,
+            "full_name": full_name.strip(),
+            "is_demo": bool(username_clean == "demo")
+        }
+
+
+def create_session(user_id: int) -> str:
+    token = generate_session_token()
+    expires_at = (datetime.now() + timedelta(days=30)).isoformat()
+    with get_connection() as conn:
+        conn.execute("""
+            INSERT INTO user_sessions (token, user_id, expires_at)
+            VALUES (?, ?, ?)
+        """, (token, user_id, expires_at))
+        conn.commit()
+    return token
+
+
+def get_session_user(token: str) -> Optional[Dict[str, Any]]:
+    with get_connection() as conn:
+        row = conn.execute("""
+            SELECT u.* FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.token = ? AND s.expires_at > datetime('now')
+        """, (token,)).fetchone()
+        if not row:
+            return None
+        user = dict(row)
+        user["is_demo"] = bool(user["username"] == "demo")
+        return user
+
+
+def delete_session(token: str):
+    with get_connection() as conn:
+        conn.execute("DELETE FROM user_sessions WHERE token = ?", (token,))
         conn.commit()
 
 

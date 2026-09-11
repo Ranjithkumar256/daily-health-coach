@@ -1,5 +1,5 @@
 /* Daily Health Coach - Service Worker for Offline Caching & Android PWA */
-const CACHE_NAME = 'health-coach-v1';
+const CACHE_NAME = 'health-coach-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',

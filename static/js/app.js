@@ -13,14 +13,25 @@ class HealthCoachApp {
     this.phoneViewActive = false;
     this.activeMobileTab = 'today';
     this.nextWaterReminderTime = Date.now() + 60 * 60 * 1000;
+    this.currentUser = null;
   }
 
   async init() {
     this.chart = new HealthCharts('trendChartContainer');
     this.bindEvents();
+    this.bindAuthEvents();
     this.initPWA();
     this.startWaterReminderScheduler();
-    await this.refreshData();
+
+    // Check authentication session
+    const isAuthenticated = await this.checkAuthSession();
+    if (!isAuthenticated) {
+      this.showAuthOverlay();
+    } else {
+      this.updateUserDisplay(this.currentUser);
+      await this.refreshData();
+    }
+
     window.addEventListener('resize', () => this.chart.render());
   }
 
@@ -758,15 +769,15 @@ class HealthCoachApp {
           <div style="font-weight: 700; color: #ffffff;">${r.label}</div>
           <div style="font-size: 0.7rem; color: var(--text-muted);">${r.date}</div>
         </td>
-        <td><strong>${r.weight_kg}</strong> kg</td>
-        <td><strong>${r.protein_g}</strong>g</td>
-        <td>${r.calories_consumed.toLocaleString()} kcal</td>
-        <td>${r.calories_burned.toLocaleString()} kcal</td>
-        <td><strong>${r.net_calories.toLocaleString()}</strong> kcal</td>
-        <td>${r.steps.toLocaleString()}</td>
-        <td>${r.water_ml.toLocaleString()} ml</td>
-        <td>${r.habits_completed} done</td>
-        <td><span class="score-badge-table ${scoreClass}">${r.health_score}</span></td>
+        <td><strong>${r.weight_kg || 72.5}</strong> kg</td>
+        <td><strong>${r.protein_g || 0}</strong>g</td>
+        <td>${(r.calories_consumed || 0).toLocaleString()} kcal</td>
+        <td>${(r.calories_burned || 0).toLocaleString()} kcal</td>
+        <td><strong>${(r.net_calories || 0).toLocaleString()}</strong> kcal</td>
+        <td>${(r.steps || r.steps_total || 0).toLocaleString()}</td>
+        <td>${(r.water_ml || r.water_total_ml || 0).toLocaleString()} ml</td>
+        <td>${r.habits_completed || 0} done</td>
+        <td><span class="score-badge-table ${scoreClass}">${r.health_score || 0}</span></td>
         <td>
           <button class="day-load-btn" onclick="app.loadSpecificDate('${r.date}')" title="Load full tracker for ${r.date}">
             ${isCurrent ? 'Viewing' : 'Load Day'}
@@ -1118,6 +1129,171 @@ class HealthCoachApp {
         openModals.forEach(m => this.closeModal(m.id));
       }
     });
+  }
+
+  // ====================================================================
+  // Authentication & Multi-Tenant User Isolation
+  // ====================================================================
+  bindAuthEvents() {
+    // Switch between Sign In and Sign Up tabs
+    document.getElementById('tabSignInBtn')?.addEventListener('click', () => this.switchAuthTab('signInTab'));
+    document.getElementById('tabSignUpBtn')?.addEventListener('click', () => this.switchAuthTab('signUpTab'));
+
+    // Form Sign In submission
+    document.getElementById('formSignIn')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const ident = document.getElementById('loginUsername').value.trim();
+      const pass = document.getElementById('loginPassword').value;
+      await this.handleLogin(ident, pass);
+    });
+
+    // Form Sign Up submission
+    document.getElementById('formSignUp')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fullName = document.getElementById('regFullName').value.trim();
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const pass = document.getElementById('regPassword').value;
+      await this.handleRegister(fullName, username, email, pass);
+    });
+
+    // Quick Demo Login Button
+    document.getElementById('btnQuickDemoLogin')?.addEventListener('click', async () => {
+      const uInput = document.getElementById('loginUsername');
+      const pInput = document.getElementById('loginPassword');
+      if (uInput) uInput.value = 'demo';
+      if (pInput) pInput.value = 'demo123';
+      await this.handleLogin('demo', 'demo123');
+    });
+
+    // Sign Out Header Button
+    document.getElementById('headerSignOutBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.handleLogout();
+    });
+  }
+
+  async checkAuthSession() {
+    try {
+      const token = localStorage.getItem('dhc_auth_token');
+      const cachedUser = localStorage.getItem('dhc_local_user_v1');
+      if (!token && !cachedUser) return false;
+
+      if (window.API) {
+        const res = await window.API.getMe().catch(() => null);
+        if (res && res.user) {
+          this.currentUser = res.user;
+          localStorage.setItem('dhc_local_user_v1', JSON.stringify(res.user));
+          return true;
+        }
+      }
+
+      if (cachedUser) {
+        this.currentUser = JSON.parse(cachedUser);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  showAuthOverlay(msg = null, isSuccess = false) {
+    const overlay = document.getElementById('authOverlay');
+    if (overlay) overlay.style.display = 'flex';
+    const alertBox = document.getElementById('authAlert');
+    if (alertBox) {
+      if (msg) {
+        alertBox.textContent = msg;
+        alertBox.className = `auth-alert ${isSuccess ? 'success' : ''}`;
+        alertBox.style.display = 'flex';
+      } else {
+        alertBox.style.display = 'none';
+      }
+    }
+  }
+
+  hideAuthOverlay() {
+    const overlay = document.getElementById('authOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  switchAuthTab(targetTab) {
+    document.querySelectorAll('.auth-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.target === targetTab);
+    });
+    const signInPane = document.getElementById('signInTab');
+    const signUpPane = document.getElementById('signUpTab');
+    if (signInPane) signInPane.style.display = targetTab === 'signInTab' ? 'block' : 'none';
+    if (signUpPane) signUpPane.style.display = targetTab === 'signUpTab' ? 'block' : 'none';
+    const alertBox = document.getElementById('authAlert');
+    if (alertBox) alertBox.style.display = 'none';
+  }
+
+  async handleLogin(usernameOrEmail, password) {
+    try {
+      const res = await API.login(usernameOrEmail, password);
+      this.currentUser = res.user;
+      localStorage.setItem('dhc_local_user_v1', JSON.stringify(res.user));
+      localStorage.setItem('dhc_auth_token', res.token);
+      if (!res.user.is_demo && res.user.username !== 'demo') {
+        window.LocalDB?.ensureCleanUserData(res.user.id);
+      }
+      this.updateUserDisplay(res.user);
+      this.hideAuthOverlay();
+      await this.refreshData();
+      this.showToast(`Welcome back, ${res.user.full_name || res.user.username}! 🌿`, 'success');
+    } catch (err) {
+      const errMsg = err.message || 'Incorrect username or password';
+      this.showAuthOverlay(errMsg, false);
+      this.showToast(errMsg, 'error');
+    }
+  }
+
+  async handleRegister(fullName, username, email, password) {
+    try {
+      const res = await API.register(fullName, username, email, password);
+      this.currentUser = res.user;
+      localStorage.setItem('dhc_local_user_v1', JSON.stringify(res.user));
+      localStorage.setItem('dhc_auth_token', res.token);
+      if (!res.user.is_demo && res.user.username !== 'demo') {
+        window.LocalDB?.ensureCleanUserData(res.user.id);
+      }
+      this.updateUserDisplay(res.user);
+      this.hideAuthOverlay();
+      await this.refreshData();
+      this.showToast(`Account created! Welcome, ${res.user.full_name}! 🚀`, 'success');
+    } catch (err) {
+      const errMsg = err.message || 'Registration failed';
+      this.showAuthOverlay(errMsg, false);
+      this.showToast(errMsg, 'error');
+    }
+  }
+
+  async handleLogout() {
+    await API.logout();
+    this.currentUser = null;
+    this.updateUserDisplay(null);
+    this.showAuthOverlay();
+    this.showToast('Signed out successfully.');
+  }
+
+  updateUserDisplay(user) {
+    const badge = document.getElementById('userProfileBadge');
+    const nameEl = document.getElementById('headerUserName');
+    const tagEl = document.getElementById('headerDemoTag');
+    const signOutBtn = document.getElementById('headerSignOutBtn');
+
+    if (user) {
+      if (badge) badge.style.display = 'flex';
+      if (nameEl) nameEl.textContent = user.full_name || user.username;
+      const isDemo = Boolean(user.is_demo || user.username === 'demo');
+      if (tagEl) tagEl.style.display = isDemo ? 'inline-block' : 'none';
+      if (signOutBtn) signOutBtn.style.display = 'inline-flex';
+    } else {
+      if (badge) badge.style.display = 'none';
+      if (signOutBtn) signOutBtn.style.display = 'none';
+    }
   }
 }
 

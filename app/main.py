@@ -7,10 +7,11 @@ from datetime import datetime, timedelta
 import os
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Response, Request
+from fastapi import FastAPI, HTTPException, Query, Response, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from typing import List, Optional, Dict, Any
 
 from . import database as db
 from . import coach
@@ -30,7 +31,11 @@ from .models import (
     WearableSyncRequest,
     WearablePairRequest,
     WeightLogCreate,
-    WeightLogEntry
+    WeightLogEntry,
+    UserRegister,
+    UserLogin,
+    UserResponse,
+    AuthResponse
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -62,11 +67,91 @@ app.add_middleware(
 )
 
 
+def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    token = authorization.split("Bearer ", 1)[1].strip()
+    user = db.get_session_user(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token")
+    return user
+
+
 # --- API Routes ---
 
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "timestamp": datetime.now().isoformat(), "app": "Daily Health Coach"}
+
+
+# --- Authentication Endpoints ---
+
+@app.post("/api/auth/register", response_model=AuthResponse)
+def register(req: UserRegister):
+    username_clean = req.username.strip().lower()
+    email_clean = req.email.strip().lower()
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+    if db.get_user_by_username_or_email(username_clean):
+        raise HTTPException(status_code=400, detail="Username is already taken")
+    if db.get_user_by_username_or_email(email_clean):
+        raise HTTPException(status_code=400, detail="Email is already registered")
+
+    user_dict = db.create_user(username_clean, email_clean, req.password, req.full_name)
+    token = db.create_session(user_dict["id"])
+    return AuthResponse(
+        token=token,
+        user=UserResponse(**user_dict),
+        message="Registration successful"
+    )
+
+
+@app.post("/api/auth/login", response_model=AuthResponse)
+def login(req: UserLogin):
+    ident = req.get_identifier()
+    if not ident:
+        raise HTTPException(status_code=400, detail="Username or email is required")
+    user = db.get_user_by_username_or_email(ident)
+    if not user or not db.verify_password(req.password, user["password_hash"], user["password_salt"]):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    token = db.create_session(user["id"])
+    user_dict = {
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"],
+        "full_name": user["full_name"],
+        "is_demo": bool(user["username"] == "demo"),
+        "created_at": user.get("created_at")
+    }
+    return AuthResponse(
+        token=token,
+        user=UserResponse(**user_dict),
+        message="Logged in successfully"
+    )
+
+
+@app.get("/api/auth/me")
+def get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
+    return {
+        "status": "authenticated",
+        "user": {
+            "id": current_user["id"],
+            "username": current_user["username"],
+            "email": current_user["email"],
+            "full_name": current_user["full_name"],
+            "is_demo": bool(current_user["username"] == "demo"),
+            "created_at": current_user.get("created_at")
+        }
+    }
+
+
+@app.post("/api/auth/logout")
+def logout(authorization: Optional[str] = Header(None)):
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ", 1)[1].strip()
+        db.delete_session(token)
+    return {"status": "ok", "message": "Logged out successfully"}
 
 
 @app.get("/api/today", response_model=DaySummary)
