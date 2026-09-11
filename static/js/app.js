@@ -1215,6 +1215,7 @@ class HealthCoachApp {
         alertBox.style.display = 'none';
       }
     }
+    window.BackupManager?.checkNewInstallBackupOption();
   }
 
   hideAuthOverlay() {
@@ -1240,6 +1241,7 @@ class HealthCoachApp {
       this.currentUser = res.user;
       localStorage.setItem('dhc_local_user_v1', JSON.stringify(res.user));
       localStorage.setItem('dhc_auth_token', res.token);
+      localStorage.setItem('dhc_user_installed_before', 'true');
       if (!res.user.is_demo && res.user.username !== 'demo') {
         window.LocalDB?.ensureCleanUserData(res.user.id);
       }
@@ -1263,6 +1265,7 @@ class HealthCoachApp {
       this.currentUser = res.user;
       localStorage.setItem('dhc_local_user_v1', JSON.stringify(res.user));
       localStorage.setItem('dhc_auth_token', res.token);
+      localStorage.setItem('dhc_user_installed_before', 'true');
       if (!res.user.is_demo && res.user.username !== 'demo') {
         window.LocalDB?.ensureCleanUserData(res.user.id);
       }
