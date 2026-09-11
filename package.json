@@ -29,6 +29,7 @@
     "@capacitor/core": "^6.0.0"
   },
   "dependencies": {
+    "@capacitor/filesystem": "^6.0.4",
     "puppeteer": "^25.10.0"
   }
 }

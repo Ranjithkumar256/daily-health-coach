@@ -77,10 +77,19 @@
       }
     },
 
+    // -------------------------------------------------------------
+    // 2. DEDICATED FILE STORAGE & DATABASE PERSISTENCE (Android/data/)
+    // -------------------------------------------------------------
+    APP_PACKAGE_ID: 'com.dailyhealthcoach.app',
+    APP_STORAGE_DIR: 'Android/data/com.dailyhealthcoach.app/files/',
+    BACKUP_FILENAME: 'database_backup.json',
+
     async gatherDatabasePayload() {
       let payload = {
         app: 'DailyHealthCoach',
         version: '1.0.0',
+        package_id: this.APP_PACKAGE_ID,
+        designated_path: `Internal Storage/${this.APP_STORAGE_DIR}${this.BACKUP_FILENAME}`,
         exported_at: new Date().toISOString(),
         device: navigator.userAgent,
         data: {}
@@ -114,21 +123,69 @@
       try {
         const payload = await this.gatherDatabasePayload();
         const jsonStr = JSON.stringify(payload, null, 2);
-        const dateStr = new Date().toISOString().slice(0, 10);
-        const fileName = `dailyhealthcoach_backup_${dateStr}.json`;
+        const fileName = this.BACKUP_FILENAME;
+        let savedPathDescription = '';
 
-        const blob = new Blob([jsonStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // 1. Native Android Storage (Capacitor Filesystem in Android/data/com.dailyhealthcoach.app/files/)
+        const Filesystem = window.Capacitor?.Plugins?.Filesystem;
+        if (Filesystem) {
+          try {
+            await Filesystem.writeFile({
+              path: fileName,
+              data: jsonStr,
+              directory: 'EXTERNAL', // Resolves directly to /storage/emulated/0/Android/data/com.dailyhealthcoach.app/files/
+              encoding: 'utf8',
+              recursive: true
+            });
+            savedPathDescription = `Internal Storage/${this.APP_STORAGE_DIR}${fileName}`;
+          } catch (capErr) {
+            console.warn('Native Filesystem write error, falling back to web path:', capErr);
+          }
+        }
+
+        // 2. Web File System Access API (if available and not native)
+        if (!savedPathDescription && typeof window.showSaveFilePicker === 'function') {
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: fileName,
+              types: [{
+                description: 'Health Coach JSON Database',
+                accept: { 'application/json': ['.json'] }
+              }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonStr);
+            await writable.close();
+            savedPathDescription = `Selected Folder/${fileName}`;
+          } catch (pickerErr) {
+            if (pickerErr.name === 'AbortError') return;
+            console.warn('showSaveFilePicker fallback:', pickerErr);
+          }
+        }
+
+        // 3. Web standard download fallback
+        if (!savedPathDescription) {
+          const blob = new Blob([jsonStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          savedPathDescription = `Downloads/${fileName} (Designated: ${this.APP_STORAGE_DIR})`;
+        }
+
+        // Update UI status badge
+        const pathEl = document.getElementById('lastSavedFilePath');
+        if (pathEl) {
+          pathEl.textContent = `✅ Saved: ${savedPathDescription} (${new Date().toLocaleTimeString()})`;
+          pathEl.style.display = 'block';
+        }
 
         if (window.toastManager) {
-          window.toastManager.show('✅ Health Database saved to File Manager (Downloads)!', 'success');
+          window.toastManager.show(`✅ Database saved to ${savedPathDescription}`, 'success');
         }
       } catch (err) {
         console.error('Export to File Manager failed:', err);
@@ -138,32 +195,58 @@
       }
     },
 
+    async restoreFromDesignatedPath() {
+      // 1. Direct restore from Android/data/com.dailyhealthcoach.app/files/database_backup.json
+      const Filesystem = window.Capacitor?.Plugins?.Filesystem;
+      if (Filesystem) {
+        try {
+          const res = await Filesystem.readFile({
+            path: this.BACKUP_FILENAME,
+            directory: 'EXTERNAL',
+            encoding: 'utf8'
+          });
+          if (res && res.data) {
+            const payload = JSON.parse(res.data);
+            return await this.applyImportedPayload(payload, `Internal Storage/${this.APP_STORAGE_DIR}${this.BACKUP_FILENAME}`);
+          }
+        } catch (capErr) {
+          console.log('Direct read from Android/data not found, opening file chooser:', capErr);
+        }
+      }
+
+      // 2. If not found in native path or on web, open file picker
+      document.getElementById('inputImportFileManager')?.click();
+    },
+
+    async applyImportedPayload(payload, sourcePathName = 'File') {
+      if (!payload.app || !payload.data) {
+        throw new Error('Invalid Daily Health Coach backup file structure');
+      }
+
+      let recordCount = 0;
+      Object.keys(payload.data).forEach(k => {
+        const val = payload.data[k];
+        if (typeof val === 'object') {
+          localStorage.setItem(k, JSON.stringify(val));
+          if (Array.isArray(val)) recordCount += val.length;
+        } else if (val !== null && val !== undefined) {
+          localStorage.setItem(k, String(val));
+        }
+      });
+
+      if (window.toastManager) {
+        window.toastManager.show(`✅ Restored health database from ${sourcePathName}! (${recordCount} records loaded)`, 'success');
+      }
+
+      setTimeout(() => window.location.reload(), 1000);
+    },
+
     async importFromFileManager(file) {
       if (!file) return;
       try {
         const text = await file.text();
         const payload = JSON.parse(text);
-
-        if (!payload.app || !payload.data) {
-          throw new Error('Invalid Daily Health Coach backup file structure');
-        }
-
-        let recordCount = 0;
-        Object.keys(payload.data).forEach(k => {
-          const val = payload.data[k];
-          if (typeof val === 'object') {
-            localStorage.setItem(k, JSON.stringify(val));
-            if (Array.isArray(val)) recordCount += val.length;
-          } else if (val !== null && val !== undefined) {
-            localStorage.setItem(k, String(val));
-          }
-        });
-
-        if (window.toastManager) {
-          window.toastManager.show(`✅ Restored health database! (${recordCount} records loaded)`, 'success');
-        }
-
-        setTimeout(() => window.location.reload(), 1000);
+        await this.applyImportedPayload(payload, file.name);
       } catch (err) {
         console.error('Import from File Manager failed:', err);
         if (window.toastManager) {
@@ -347,6 +430,10 @@
 
     document.getElementById('btnExportFileManager')?.addEventListener('click', () => {
       BackupManager.exportToFileManager();
+    });
+
+    document.getElementById('btnRestoreDirectFileManager')?.addEventListener('click', () => {
+      BackupManager.restoreFromDesignatedPath();
     });
 
     const importInput = document.getElementById('inputImportFileManager');

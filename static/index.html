@@ -1160,24 +1160,30 @@
         <button class="btn-close" onclick="BackupManager.closeBackupModal()">✕</button>
       </div>
 
-      <!-- File Manager Storage Section -->
+      <!-- File Manager Storage Section (Dedicated Android/data path) -->
       <div class="terms-section-card" style="border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.04);">
-        <div class="terms-section-title" style="color: var(--emerald-400);">
-          <span>📁 Phone File Manager Storage (Survives App Uninstall)</span>
-          <span class="badge badge-emerald" style="font-size: 10px;">Offline & Permanent</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+          <div class="terms-section-title" style="color: var(--emerald-400); margin-bottom: 0;">
+            <span>📁 Dedicated Storage: Android/data/com.dailyhealthcoach.app/</span>
+          </div>
+          <span class="badge badge-emerald" style="font-size: 10px;">App-Isolated Path</span>
+        </div>
+        <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 10px; font-family: monospace; font-size: 11px; color: #a7f3d0; margin-bottom: 8px; word-break: break-all;">
+          📍 Target Path: Internal Storage/Android/data/com.dailyhealthcoach.app/files/database_backup.json
         </div>
         <p class="terms-section-text" style="margin-bottom: 10px;">
-          Exports your entire health database (profile, daily targets, calorie logs, water intake, workouts, habits, streaks) directly to your phone's File Manager (Downloads/Documents) as an open <code>.json</code> file.
+          Exports your entire health database (profile, targets, calorie logs, water intake, workouts, habits, streaks) directly into this app's dedicated internal storage directory. Survives app uninstallation and can be modified or restored anytime. <em>(Zero access taken to any other directories or personal files).</em>
         </p>
-        <p class="terms-section-text" style="color: var(--text-muted); font-size: 11.5px; margin-bottom: 12px;">
-          💡 <strong>Survives Uninstalls:</strong> Files in your phone's File Manager are never removed when you uninstall or reinstall. You can also open, edit, or modify the JSON file with any text editor or file manager!
-        </p>
+        <div id="lastSavedFilePath" style="display: none; font-size: 11px; color: #38bdf8; margin-bottom: 8px; font-weight: 600;"></div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button id="btnExportFileManager" class="btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); flex: 1; min-width: 170px; font-size: 12px; padding: 9px 12px;">
-            📥 Save to File Manager (.json)
+            📥 Save to Android/data Directory
           </button>
-          <button id="btnImportFileManager" class="btn-icon-pill" style="border-color: var(--emerald-500); color: var(--emerald-400); flex: 1; min-width: 170px; font-size: 12px; padding: 9px 12px; justify-content: center;">
-            📂 Restore / Modify from File Manager
+          <button id="btnRestoreDirectFileManager" class="btn-icon-pill" style="border-color: var(--emerald-500); color: var(--emerald-400); flex: 1; min-width: 170px; font-size: 12px; padding: 9px 12px; justify-content: center;">
+            🔄 Restore from Android/data
+          </button>
+          <button id="btnImportFileManager" class="btn-icon-pill" style="border-color: rgba(255,255,255,0.2); color: var(--text-secondary); font-size: 12px; padding: 9px 12px; justify-content: center;">
+            📂 Browse / Pick File
           </button>
           <input type="file" id="inputImportFileManager" accept=".json,application/json" style="display: none;">
         </div>
@@ -1244,6 +1250,22 @@
           </p>
         </div>
 
+        <!-- 2. Dedicated Storage Persistence -->
+        <div class="terms-section-card">
+          <div class="terms-section-title" style="color: #34d399;">
+            <span>📁 Dedicated Storage & Database Persistence (Android/data)</span>
+          </div>
+          <p class="terms-section-text">
+            To prevent permanent data loss upon app uninstallation, database backups are saved to this dedicated application folder path:
+          </p>
+          <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 10px; font-family: monospace; font-size: 11px; color: #a7f3d0; margin: 6px 0; word-break: break-all;">
+            📍 Internal Storage/Android/data/com.dailyhealthcoach.app/files/database_backup.json
+          </div>
+          <p class="terms-section-text" style="font-size: 11.5px; margin: 0;">
+            Files in this internal path survive uninstalls, and you can inspect, edit, or restore your database across reinstalls.
+          </p>
+        </div>
+
         <!-- Permissions & Reasons -->
         <div class="terms-section-card">
           <div class="terms-section-title" style="color: var(--azure-400);">
@@ -1265,11 +1287,14 @@
 
           <div class="permission-item" style="border-left-color: var(--emerald-500);">
             <div class="permission-item-head">
-              <strong>📁 Phone File Manager & Storage</strong>
-              <span class="badge badge-emerald" style="font-size: 10px;">Persistence</span>
+              <strong>💾 File Storage & Manager Access (Dedicated App Directory Only)</strong>
+              <span class="badge badge-emerald" style="font-size: 10px;">Store & Restore Only</span>
             </div>
             <p class="permission-item-desc">
-              <strong>Why it is needed:</strong> Allows exporting your entire health database (.json) directly into your phone's File Manager (Downloads/Documents) so your streaks and health logs survive if you uninstall or reinstall the app, and lets you modify and re-import anytime.
+              <strong>Exclusive Purpose:</strong> Access is granted <strong>strictly and solely for storing (export) and restoring (import)</strong> your local health database backup <code>.json</code> file inside <code>Internal Storage/Android/data/com.dailyhealthcoach.app/files/</code>.
+            </p>
+            <p class="permission-item-desc" style="color: #a7f3d0; margin-top: 4px;">
+              🛡️ <strong>Zero Access to Other Paths:</strong> We <strong>DO NOT scan, read, access, or touch ANY other directories, folders, photos, videos, contacts, or documents on your device</strong>. All storage operations are 100% isolated to this dedicated app directory.
             </p>
           </div>
 
