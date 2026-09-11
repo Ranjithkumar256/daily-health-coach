@@ -587,9 +587,13 @@ class HealthCoachApp {
     try {
       this.state = await API.toggleHabit(habitId, this.currentDate);
       this.render();
+      window.dispatchEvent(new CustomEvent('habitToggled', { detail: { habitId, completed: this.state.habits_completed } }));
       if (this.state.habits_completed === this.state.habits_total) {
         window.soundEngine.playChime('achievement');
         this.showToast('🎉 All daily habits completed! Consistency level 100%');
+        if (window.AdsManager) {
+          window.AdsManager.showInterstitial('🎉 Daily Habits 100% Complete! Streak Maintained!');
+        }
       }
     } catch (e) {
       this.showToast('Failed to update habit', 'error');
