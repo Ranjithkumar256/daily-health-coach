@@ -30,6 +30,9 @@ class HealthCoachApp {
     } else {
       this.updateUserDisplay(this.currentUser);
       await this.refreshData();
+      if (!window.BackupManager?.isTermsAccepted()) {
+        window.BackupManager?.showTermsModal(false);
+      }
     }
 
     window.addEventListener('resize', () => this.chart.render());
@@ -1244,6 +1247,9 @@ class HealthCoachApp {
       this.hideAuthOverlay();
       await this.refreshData();
       this.showToast(`Welcome back, ${res.user.full_name || res.user.username}! 🌿`, 'success');
+
+      // Prompt Terms & Conditions every time user logs in
+      window.BackupManager?.promptTermsOnLogin();
     } catch (err) {
       const errMsg = err.message || 'Incorrect username or password';
       this.showAuthOverlay(errMsg, false);
@@ -1264,6 +1270,9 @@ class HealthCoachApp {
       this.hideAuthOverlay();
       await this.refreshData();
       this.showToast(`Account created! Welcome, ${res.user.full_name}! 🚀`, 'success');
+
+      // Prompt Terms & Conditions every time user registers/logs in
+      window.BackupManager?.promptTermsOnLogin();
     } catch (err) {
       const errMsg = err.message || 'Registration failed';
       this.showAuthOverlay(errMsg, false);
@@ -1274,6 +1283,11 @@ class HealthCoachApp {
   async handleLogout() {
     await API.logout();
     this.currentUser = null;
+    try {
+      sessionStorage.removeItem('dhc_terms_accepted_session');
+      sessionStorage.clear();
+    } catch (e) {}
+    window.BackupManager?.clearTermsValidationError();
     this.updateUserDisplay(null);
     this.showAuthOverlay();
     this.showToast('Signed out successfully.');

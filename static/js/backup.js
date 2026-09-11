@@ -126,9 +126,18 @@
       setTimeout(() => modal.classList.add('show'), 10);
     },
 
+    promptTermsOnLogin() {
+      try {
+        sessionStorage.removeItem('dhc_terms_accepted_session');
+      } catch (e) {}
+      this.clearTermsValidationError();
+      this.showTermsModal(false);
+    },
+
     checkFirstLaunchTerms() {
       this.updateProfileTermsBadge();
-      if (!this.isTermsAccepted()) {
+      const hasAuth = localStorage.getItem('dhc_auth_token') || localStorage.getItem('dhc_local_user_v1');
+      if (hasAuth && !this.isTermsAccepted()) {
         this.showTermsModal(false);
       }
     },
@@ -609,6 +618,16 @@
         }
         BackupManager.clearTermsValidationError();
         window.app?.handleLogout();
+      });
+    }
+
+    const termsModal = document.getElementById('modalTermsConsent');
+    if (termsModal) {
+      termsModal.addEventListener('click', (e) => {
+        if (e.target === termsModal && BackupManager.isTermsAccepted()) {
+          termsModal.classList.remove('show');
+          termsModal.style.display = 'none';
+        }
       });
     }
 
