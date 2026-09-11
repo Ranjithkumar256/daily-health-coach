@@ -35,7 +35,14 @@ class HealthCoachApp {
       }
     }
 
-    window.addEventListener('resize', () => this.chart.render());
+    // Debounce chart render on window resize using requestAnimationFrame
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      if (resizeTimer) cancelAnimationFrame(resizeTimer);
+      resizeTimer = requestAnimationFrame(() => {
+        if (this.chart) this.chart.render();
+      });
+    }, { passive: true });
   }
 
   async refreshData() {
@@ -397,40 +404,46 @@ class HealthCoachApp {
     if (inputInterval && !inputInterval.value) inputInterval.value = t.water_reminder_interval_min || 60;
   }
 
-  // --- Water Reminder Scheduler ---
+  // --- Water Reminder Scheduler (Optimized for 60fps & Battery Life) ---
 
   startWaterReminderScheduler() {
     setInterval(() => {
-      this.renderWaterReminder();
+      if (!document.hidden) {
+        this.renderWaterReminder();
+      }
     }, 1000);
   }
 
   renderWaterReminder() {
-    const countdownEl = document.getElementById('waterReminderCountdown');
-    const statusEl = document.getElementById('waterReminderStatusText');
-    const intervalMin = (this.state && this.state.targets && this.state.targets.water_reminder_interval_min) || 60;
-
-    if (statusEl) {
-      statusEl.textContent = `Interval: Every ${intervalMin}m`;
-    }
-
     const now = Date.now();
+    const intervalMin = (this.state && this.state.targets && this.state.targets.water_reminder_interval_min) || 60;
     const diffMs = this.nextWaterReminderTime - now;
 
     if (diffMs <= 0) {
       // Trigger water reminder chime!
-      window.soundEngine.playChime('water');
-      window.soundEngine.vibrate([30, 40, 30]);
+      window.soundEngine?.playChime('water');
+      window.soundEngine?.vibrate([30, 40, 30]);
       this.showToast('💧 Time to Hydrate! Drink a glass of water (250ml)', 'info');
       // Reset timer
       this.nextWaterReminderTime = Date.now() + intervalMin * 60 * 1000;
       return;
     }
 
+    const countdownEl = document.getElementById('waterReminderCountdown');
+    const statusEl = document.getElementById('waterReminderStatusText');
+
+    if (statusEl) {
+      const statusText = `Interval: Every ${intervalMin}m`;
+      if (statusEl.textContent !== statusText) statusEl.textContent = statusText;
+    }
+
     if (countdownEl) {
       const mins = Math.floor(diffMs / 60000);
       const secs = Math.floor((diffMs % 60000) / 1000);
-      countdownEl.textContent = `⏳ In ${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+      const countdownText = `⏳ In ${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+      if (countdownEl.textContent !== countdownText) {
+        countdownEl.textContent = countdownText;
+      }
     }
   }
 
@@ -605,9 +618,6 @@ class HealthCoachApp {
       if (this.state.habits_completed === this.state.habits_total) {
         window.soundEngine.playChime('achievement');
         this.showToast('🎉 All daily habits completed! Consistency level 100%');
-        if (window.AdsManager) {
-          window.AdsManager.showInterstitial('🎉 Daily Habits 100% Complete! Streak Maintained!');
-        }
       }
     } catch (e) {
       this.showToast('Failed to update habit', 'error');
@@ -832,6 +842,15 @@ class HealthCoachApp {
     }
   }
 
+  // Aliases for compatibility
+  autoCalculateMetabolism() {
+    return this.previewMetabolismCalculation();
+  }
+
+  calculateMetabolismFromInputs() {
+    return this.previewMetabolismCalculation();
+  }
+
   // --- View Mode & Modals ---
 
   togglePhonePreview() {
@@ -910,9 +929,14 @@ class HealthCoachApp {
       el.classList.toggle('active', el.dataset.tab === tabName);
     });
 
+    if (tabName === 'today') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     const targetSection = document.getElementById(`section-${tabName}`);
     if (targetSection) {
-      targetSection.scrollIntoView({ behavior: 'smooth' });
+      targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }
 

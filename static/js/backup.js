@@ -449,12 +449,99 @@
       card.style.display = 'block';
     },
 
-    async applyImportedPayload(payload, sourcePathName = 'File', shouldReload = true) {
-      const dataObj = payload.data || payload;
-      if (!dataObj || typeof dataObj !== 'object') {
-        throw new Error('Invalid Daily Health Coach backup file structure');
+    validateDatabaseStructure(payload) {
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return { valid: false, error: 'File is not a valid JSON database object.' };
       }
 
+      // 1. Signature Check: If application identifier is declared, it must match DailyHealthCoach
+      if (payload.app && payload.app !== 'DailyHealthCoach') {
+        return { 
+          valid: false, 
+          error: `Application signature mismatch: Found "${payload.app}", but Daily Health Coach requires a DailyHealthCoach database backup.` 
+        };
+      }
+
+      const dataObj = payload.data || payload;
+      if (!dataObj || typeof dataObj !== 'object' || Array.isArray(dataObj)) {
+        return { valid: false, error: 'Database payload contains no valid data table container.' };
+      }
+
+      const keys = Object.keys(dataObj);
+      if (keys.length === 0) {
+        return { valid: false, error: 'Database file is empty. Total DB structure match failed.' };
+      }
+
+      // 2. Reject foreign app schemas (e.g. PaisaTrack with paisa_ keys)
+      const hasPaisaKeys = keys.some(k => k.startsWith('paisa_') || k.startsWith('paisatrack_'));
+      const hasDhcKeys = keys.some(k => k.startsWith('dhc_'));
+      if (hasPaisaKeys && !hasDhcKeys) {
+        return { 
+          valid: false, 
+          error: 'PaisaTrack finance database detected. Cannot restore into Daily Health Coach.' 
+        };
+      }
+
+      // 3. Schema Structure Check: Must contain core health tables/keys
+      const recognizedDhcKeys = [
+        'dhc_local_users_store_v2',
+        'dhc_local_user_v1',
+        'dhc_auth_token',
+        'dhc_targets_v1',
+        'dhc_habits_v1',
+        'dhc_water_logs_v1',
+        'dhc_food_logs_v1',
+        'dhc_activity_logs_v1',
+        'dhc_weight_logs_v1',
+        'dhc_wearable_v1',
+        'dhc_habit_completions_v1',
+        'dhc_user_installed_before'
+      ];
+
+      const matchedKeys = keys.filter(k => 
+        recognizedDhcKeys.includes(k) || 
+        k.startsWith('dhc_')
+      );
+
+      if (matchedKeys.length === 0) {
+        return { 
+          valid: false, 
+          error: 'Total DB structure mismatch: No valid Daily Health Coach tables found (e.g. targets, habits, water logs).' 
+        };
+      }
+
+      // 4. Data Type & Schema Validation on key tables
+      if (dataObj.dhc_habits_v1 !== undefined && !Array.isArray(dataObj.dhc_habits_v1)) {
+        return { valid: false, error: 'Corrupted database schema: "dhc_habits_v1" must be an array table.' };
+      }
+      if (dataObj.dhc_water_logs_v1 !== undefined && !Array.isArray(dataObj.dhc_water_logs_v1)) {
+        return { valid: false, error: 'Corrupted database schema: "dhc_water_logs_v1" must be an array table.' };
+      }
+      if (dataObj.dhc_targets_v1 !== undefined && (typeof dataObj.dhc_targets_v1 !== 'object' || dataObj.dhc_targets_v1 === null)) {
+        return { valid: false, error: 'Corrupted database schema: "dhc_targets_v1" must be an object store.' };
+      }
+
+      return { valid: true, matchedCount: matchedKeys.length };
+    },
+
+    async applyImportedPayload(payload, sourcePathName = 'File', shouldReload = true) {
+      // STRICT TOTAL DB STRUCTURE VALIDATION
+      const validation = this.validateDatabaseStructure(payload);
+      if (!validation.valid) {
+        const errorMsg = `❌ Database structure mismatch: ${validation.error} Restore cancelled.`;
+        const alertEl = document.getElementById('authRestoreStatusAlert');
+        if (alertEl) {
+          alertEl.style.display = 'block';
+          alertEl.style.background = 'rgba(239, 68, 68, 0.15)';
+          alertEl.style.borderColor = '#ef4444';
+          alertEl.style.color = '#fca5a5';
+          alertEl.textContent = errorMsg;
+        }
+        if (window.toastManager) window.toastManager.show(errorMsg, 'error');
+        throw new Error(validation.error);
+      }
+
+      const dataObj = payload.data || payload;
       let recordCount = 0;
       Object.keys(dataObj).forEach(k => {
         if (['app', 'version', 'package_id', 'designated_path', 'download_path', 'exported_at', 'device'].includes(k) && payload.data) {
@@ -598,6 +685,11 @@
         }
 
         if (!payload || !payload.data) throw new Error('Invalid Cloud backup snapshot');
+
+        const validation = this.validateDatabaseStructure(payload);
+        if (!validation.valid) {
+          throw new Error(`Total DB structure mismatch: ${validation.error}`);
+        }
 
         Object.keys(payload.data).forEach(k => {
           const val = payload.data[k];

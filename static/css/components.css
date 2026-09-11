@@ -3,11 +3,9 @@
    Health Score Ring, Wave Bottle, Macro Fuel Bars, Habit Checkers, Modals
    ========================================================================== */
 
-/* Card Base */
+/* Card Base - 60fps Smooth Hardware Acceleration */
 .coach-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.94), rgba(12, 18, 30, 0.98));
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
@@ -17,7 +15,9 @@
   box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;
-  transition: transform var(--transition-normal), border-color var(--transition-normal);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
 }
 
 .coach-card:hover {

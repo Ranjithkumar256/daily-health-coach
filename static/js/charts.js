@@ -23,7 +23,8 @@ class HealthCharts {
   render() {
     if (!this.container || !this.data || this.data.length === 0) return;
 
-    const width = this.container.clientWidth || 580;
+    const width = this.container.clientWidth;
+    if (width <= 0) return;
     const height = 180;
     const padding = { top: 25, right: 20, bottom: 35, left: 45 };
     const chartW = width - padding.left - padding.right;

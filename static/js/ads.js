@@ -187,12 +187,8 @@
     },
 
     hookMilestones() {
-      // Show Interstitial on milestone completion (e.g. water target or habit completion)
-      window.addEventListener('habitToggled', () => {
-        if (Math.random() > 0.6) {
-          this.showInterstitial('Streak Maintained! Keep crushing your daily health targets.');
-        }
-      });
+      // Habit checks should be instantaneous and silky smooth without full-screen interruptions
+      // Banner ads remain active and responsive
     },
 
     showInterstitial(message = 'Great Progress!') {

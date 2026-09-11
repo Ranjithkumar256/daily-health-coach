@@ -773,23 +773,23 @@
 
   <!-- Native Mobile Bottom Bar (visible on real Android phone screens) -->
   <nav class="native-mobile-nav">
-    <button class="nav-tab-item active" data-tab="today" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+    <button class="nav-tab-item active" data-tab="today" onclick="app.switchMobileTab('today')">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
       <span>Today</span>
     </button>
-    <button class="nav-tab-item" data-tab="hydration" onclick="document.getElementById('section-hydration').scrollIntoView({behavior:'smooth'})">
+    <button class="nav-tab-item" data-tab="hydration" onclick="app.switchMobileTab('hydration')">
       <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
       <span>Water</span>
     </button>
-    <button class="nav-tab-item" data-tab="nutrition" onclick="document.getElementById('section-nutrition').scrollIntoView({behavior:'smooth'})">
+    <button class="nav-tab-item" data-tab="nutrition" onclick="app.switchMobileTab('nutrition')">
       <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path></svg>
       <span>Fuel</span>
     </button>
-    <button class="nav-tab-item" data-tab="activity" onclick="document.getElementById('section-activity').scrollIntoView({behavior:'smooth'})">
+    <button class="nav-tab-item" data-tab="activity" onclick="app.switchMobileTab('activity')">
       <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
       <span>Move</span>
     </button>
-    <button class="nav-tab-item" data-tab="habits" onclick="document.getElementById('section-habits').scrollIntoView({behavior:'smooth'})">
+    <button class="nav-tab-item" data-tab="habits" onclick="app.switchMobileTab('habits')">
       <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
       <span>Habits</span>
     </button>
