@@ -283,7 +283,7 @@
   align-items: center;
   justify-content: space-around;
   padding: 0 0.5rem;
-  z-index: 90;
+  z-index: 1005;
 }
 
 .nav-tab-item {
