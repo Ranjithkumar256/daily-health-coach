@@ -95,28 +95,56 @@
         data: {}
       };
 
-      const keys = [
-        'dhc_targets_v1',
-        'dhc_habits_v1',
-        'dhc_water_logs_v1',
-        'dhc_food_logs_v1',
-        'dhc_activity_logs_v1',
-        'dhc_weight_logs_v1',
-        'dhc_wearable_v1',
-        'dhc_habit_completions_v1',
-        'sound_enabled'
-      ];
-
-      keys.forEach(k => {
-        try {
-          const val = localStorage.getItem(k);
-          if (val) payload.data[k] = JSON.parse(val);
-        } catch (e) {
-          payload.data[k] = localStorage.getItem(k);
+      // Dynamically gather all local health data (habits, logs, targets, completions, metrics)
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('dhc_') || k === 'sound_enabled')) {
+          try {
+            payload.data[k] = JSON.parse(localStorage.getItem(k));
+          } catch (e) {
+            payload.data[k] = localStorage.getItem(k);
+          }
         }
-      });
+      }
 
       return payload;
+    },
+
+    // -------------------------------------------------------------
+    // AUTOMATIC BACKGROUND AUTO-SAVE ENGINE
+    // Automatically writes database_backup.json to Android/data/ without clicking
+    // -------------------------------------------------------------
+    _autoSaveTimer: null,
+    triggerAutoSave(reason = 'data_modified') {
+      if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
+      this._autoSaveTimer = setTimeout(() => {
+        this.silentAutoSave(reason);
+      }, 1500); // 1.5 second debounce for optimal battery & performance
+    },
+
+    async silentAutoSave(reason = 'auto') {
+      const Filesystem = window.Capacitor?.Plugins?.Filesystem;
+      if (!Filesystem) return; // Native Android persistent auto-save
+
+      try {
+        const payload = await this.gatherDatabasePayload();
+        const jsonStr = JSON.stringify(payload, null, 2);
+        await Filesystem.writeFile({
+          path: this.BACKUP_FILENAME,
+          data: jsonStr,
+          directory: 'EXTERNAL', // /storage/emulated/0/Android/data/com.dailyhealthcoach.app/files/
+          encoding: 'utf8',
+          recursive: true
+        });
+
+        const pathEl = document.getElementById('lastSavedFilePath');
+        if (pathEl) {
+          pathEl.innerHTML = `⚡ <strong>Auto-Synced:</strong> <code>Internal Storage/${this.APP_STORAGE_DIR}${this.BACKUP_FILENAME}</code> <span style="opacity: 0.8;">(${new Date().toLocaleTimeString()})</span>`;
+          pathEl.style.display = 'block';
+        }
+      } catch (err) {
+        console.debug('Background auto-save caught:', err);
+      }
     },
 
     async exportToFileManager() {
@@ -400,8 +428,13 @@
       const autoSyncCheck = document.getElementById('cloudConfigAutoSync');
       const customWrap = document.getElementById('customCloudConfigWrap');
 
+      const defaultBackendUrl = `${window.location.origin}/api/cloud-backup`;
+
       if (modeSelect) modeSelect.value = config.mode;
-      if (urlInput) urlInput.value = config.serverUrl || '';
+      if (urlInput) {
+        urlInput.value = config.serverUrl || defaultBackendUrl;
+        urlInput.placeholder = defaultBackendUrl;
+      }
       if (keyInput) keyInput.value = config.apiKey || '';
       if (autoSyncCheck) autoSyncCheck.checked = Boolean(config.autoSync);
       if (customWrap) customWrap.style.display = config.mode === 'custom' ? 'block' : 'none';
@@ -412,6 +445,44 @@
   };
 
   window.BackupManager = BackupManager;
+
+  // -------------------------------------------------------------
+  // AUTOMATIC STORAGE MUTATION INTERCEPTOR & LIFECYCLE SYNC
+  // -------------------------------------------------------------
+  try {
+    const origSetItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, val) {
+      origSetItem(key, val);
+      if (typeof key === 'string' && (key.startsWith('dhc_') || key === 'sound_enabled')) {
+        if (window.BackupManager?.triggerAutoSave) {
+          window.BackupManager.triggerAutoSave(key);
+        }
+      }
+    };
+  } catch (e) {}
+
+  // App lifecycle listeners: Auto-save immediately when minimizing or leaving app
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && window.BackupManager) {
+      window.BackupManager.silentAutoSave('app_minimized');
+    }
+  });
+
+  window.addEventListener('pagehide', () => {
+    if (window.BackupManager) {
+      window.BackupManager.silentAutoSave('page_hide');
+    }
+  });
+
+  if (window.Capacitor?.Plugins?.App) {
+    try {
+      window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+        if (!state.isActive && window.BackupManager) {
+          window.BackupManager.silentAutoSave('app_background');
+        }
+      });
+    } catch (e) {}
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     BackupManager.checkFirstLaunchTerms();
@@ -459,6 +530,11 @@
 
     document.getElementById('btnOpenCloudConfig')?.addEventListener('click', () => {
       BackupManager.openCloudConfigModal();
+    });
+
+    document.getElementById('btnUseCurrentServerUrl')?.addEventListener('click', () => {
+      const urlInput = document.getElementById('cloudConfigUrl');
+      if (urlInput) urlInput.value = `${window.location.origin}/api/cloud-backup`;
     });
 
     document.getElementById('cloudConfigMode')?.addEventListener('change', (e) => {

@@ -1166,13 +1166,16 @@
           <div class="terms-section-title" style="color: var(--emerald-400); margin-bottom: 0;">
             <span>📁 Dedicated Storage: Android/data/com.dailyhealthcoach.app/</span>
           </div>
-          <span class="badge badge-emerald" style="font-size: 10px;">App-Isolated Path</span>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <span class="badge badge-emerald" style="font-size: 10px;">⚡ Auto-Save Active</span>
+            <span class="badge badge-azure" style="font-size: 10px;">App-Isolated Path</span>
+          </div>
         </div>
         <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 10px; font-family: monospace; font-size: 11px; color: #a7f3d0; margin-bottom: 8px; word-break: break-all;">
           📍 Target Path: Internal Storage/Android/data/com.dailyhealthcoach.app/files/database_backup.json
         </div>
         <p class="terms-section-text" style="margin-bottom: 10px;">
-          Exports your entire health database (profile, targets, calorie logs, water intake, workouts, habits, streaks) directly into this app's dedicated internal storage directory. Survives app uninstallation and can be modified or restored anytime. <em>(Zero access taken to any other directories or personal files).</em>
+          ⚡ <strong>Automatic Sync Active:</strong> Whenever you log water, meals, workouts, weight, or complete habits, your database automatically syncs to <code>database_backup.json</code> in the background without needing to click backup every time. <em>(Zero access taken to any other directories or personal files).</em>
         </p>
         <div id="lastSavedFilePath" style="display: none; font-size: 11px; color: #38bdf8; margin-bottom: 8px; font-weight: 600;"></div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -1351,9 +1354,14 @@
         <div class="form-group">
           <label class="form-label" for="cloudConfigUrl">Cloud Database / Webhook URL</label>
           <input type="url" id="cloudConfigUrl" class="form-input" placeholder="https://your-server.com/api/dhc-backup">
-          <span style="font-size: 11px; color: var(--text-muted); margin-top: 3px; display: block;">
-            The app will POST JSON payloads to this endpoint on backup and GET on restore.
-          </span>
+          <div style="margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: var(--text-muted); margin: 0;">
+              POST saves backup; GET restores snapshot.
+            </span>
+            <button type="button" class="btn-icon-pill" id="btnUseCurrentServerUrl" style="font-size: 10.5px; padding: 3px 8px; border-radius: 4px; border-color: rgba(255,255,255,0.2);">
+              🔗 Use Current Server
+            </button>
+          </div>
         </div>
 
         <div class="form-group" style="margin-top: 8px;">

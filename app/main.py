@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import os
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -313,9 +313,48 @@ def log_weight(entry: WeightLogCreate):
     return coach.get_full_day_summary(target_date)
 
 
-@app.get("/api/weight/history")
-def get_weight_history():
-    return db.get_weight_logs()
+# --- Cloud Database Backup & Restore API ---
+@app.post("/api/cloud-backup")
+async def save_health_cloud_backup(request: Request):
+    """
+    Saves encrypted or raw health database backup JSON payload to cloud storage.
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    backup_dir = os.path.join(BASE_DIR, "data", "cloud_backups")
+    os.makedirs(backup_dir, exist_ok=True)
+    backup_file = os.path.join(backup_dir, "backup_health_coach.json")
+
+    import json
+    with open(backup_file, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+    return {
+        "status": "ok",
+        "message": "Health database cloud backup saved successfully",
+        "saved_at": datetime.utcnow().isoformat(),
+        "package_id": payload.get("package_id", "com.dailyhealthcoach.app"),
+        "keys_count": len(payload.get("data", {}))
+    }
+
+
+@app.get("/api/cloud-backup")
+async def get_health_cloud_backup():
+    """
+    Retrieves latest health database backup JSON payload.
+    """
+    backup_dir = os.path.join(BASE_DIR, "data", "cloud_backups")
+    backup_file = os.path.join(backup_dir, "backup_health_coach.json")
+
+    if not os.path.exists(backup_file):
+        raise HTTPException(status_code=404, detail="No cloud backup found on server")
+
+    import json
+    with open(backup_file, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 # --- Static and PWA Handlers ---
