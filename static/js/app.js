@@ -1203,6 +1203,15 @@ class HealthCoachApp {
   }
 
   showAuthOverlay(msg = null, isSuccess = false) {
+    if (window.BackupManager) {
+      window.BackupManager.closeTermsModal();
+    }
+    const termsModal = document.getElementById('modalTermsConsent');
+    if (termsModal) {
+      termsModal.classList.remove('show');
+      termsModal.classList.remove('open');
+      termsModal.style.display = 'none';
+    }
     const overlay = document.getElementById('authOverlay');
     if (overlay) overlay.style.display = 'flex';
     const alertBox = document.getElementById('authAlert');
@@ -1290,7 +1299,13 @@ class HealthCoachApp {
       sessionStorage.removeItem('dhc_terms_accepted_session');
       sessionStorage.clear();
     } catch (e) {}
-    window.BackupManager?.clearTermsValidationError();
+    window.BackupManager?.closeTermsModal();
+    const termsModal = document.getElementById('modalTermsConsent');
+    if (termsModal) {
+      termsModal.classList.remove('show');
+      termsModal.classList.remove('open');
+      termsModal.style.display = 'none';
+    }
     this.updateUserDisplay(null);
     this.showAuthOverlay();
     this.showToast('Signed out successfully.');

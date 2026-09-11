@@ -59,12 +59,17 @@
       } catch (e) {}
       this.clearTermsValidationError();
       this.updateProfileTermsBadge();
+      this.closeTermsModal();
+    },
 
+    closeTermsModal() {
       const modal = document.getElementById('modalTermsConsent');
       if (modal) {
         modal.classList.remove('show');
+        modal.classList.remove('open');
         modal.style.display = 'none';
       }
+      this.clearTermsValidationError();
     },
 
     clearTermsValidationError() {
